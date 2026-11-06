@@ -1,0 +1,41 @@
+# =============================================================================
+# Git Ignore for Termux Sentinel
+# =============================================================================
+
+# Credentials & Sensitive Configurations
+rclone.conf
+*.token
+*.pem
+*.key
+.env
+.env.*
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Logs & Runtime Dumps
+*.log
+test_trace.log
+rclone_backup.log
+rclone_cmf_backup.log
+
+# Temporary and Archive Files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+*.zip
+*.tar.gz
+*.7z
+
+# OS Metadata
+.DS_Store
+Thumbs.db
