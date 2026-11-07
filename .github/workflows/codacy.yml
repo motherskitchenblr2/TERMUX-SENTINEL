@@ -32,69 +32,109 @@ jobs:
       - name: Run Codacy Analysis CLI
         uses: codacy/codacy-analysis-cli-action@v4
         with:
-          # Optional project token: uses secret if configured, or runs client-side tools if absent
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           verbose: true
           output: results.sarif
           format: sarif
-          # Adjust severity for GitHub Code Scanning compatibility
           gh-code-scanning-compat: true
-          # Force 0 exit code so SARIF upload always executes and reports to GitHub Security
           max-allowed-issues: 2147483647
 
-      # Normalize SARIF runs and sanitize URIs to comply with GitHub CodeQL requirements
-      - name: Normalize SARIF Output
+      # -----------------------------------------------------------------------
+      # Merge all Codacy engine runs into ONE run and de-duplicate artifacts.
+      # -----------------------------------------------------------------------
+      - name: Normalize and de-duplicate SARIF
         if: always()
         run: |
-          if [ -f results.sarif ]; then
-            sudo chmod 666 results.sarif
-            python3 -c "
-            import json, os
-
-            with open('results.sarif', 'r', encoding='utf-8') as f:
-                content = f.read()
-
-            # Encode spaces in URIs to ensure RFC 3986 compliance
-            content = content.replace('\"Python Script/', '\"Python%20Script/')
-            data = json.loads(content)
-
-            runs = data.get('runs', [])
-            if len(runs) > 1:
-                all_rules = []
-                all_results = []
-                all_artifacts = []
-                seen_rule_ids = set()
-
-                for r in runs:
-                    driver = r.get('tool', {}).get('driver', {})
-                    for rule in driver.get('rules', []):
-                        rid = rule.get('id')
-                        if rid and rid not in seen_rule_ids:
-                            seen_rule_ids.add(rid)
-                            all_rules.append(rule)
-                    all_results.extend(r.get('results', []))
-                    all_artifacts.extend(r.get('artifacts', []))
-
-                merged_run = {
-                    'tool': {
-                        'driver': {
-                            'name': 'Codacy Security Analysis',
-                            'rules': all_rules
-                        }
-                    },
-                    'results': all_results,
-                    'artifacts': all_artifacts
-                }
-                data['runs'] = [merged_run]
-
-                with open('results.sarif', 'w', encoding='utf-8') as f:
-                    json.dump(data, f)
-                print(f'Successfully consolidated {len(runs)} SARIF runs into 1 single run with {len(all_results)} findings.')
-            "
+          if [ ! -f results.sarif ]; then
+            echo "No SARIF file generated, skipping normalization."
+            exit 0
           fi
+
+          sudo chmod 666 results.sarif
+
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          sarif_path = Path("results.sarif")
+          with sarif_path.open("r", encoding="utf-8") as fh:
+              data = json.load(fh)
+
+          runs = data.get("runs", [])
+          if not runs:
+              print("SARIF has no runs, nothing to do.")
+              raise SystemExit(0)
+
+          # -------------------------------------------------------------------
+          # 1. Collect and de-duplicate artifacts across all runs.
+          #    An artifact is uniquely identified by its location.uri and
+          #    location.uriBaseId (if present).
+          # -------------------------------------------------------------------
+          artifact_map = {}          # key -> artifact object
+          for run in runs:
+              for artifact in run.get("artifacts", []):
+                  loc = artifact.get("location", {})
+                  uri = loc.get("uri", "")
+                  base = loc.get("uriBaseId", "")
+                  # Normalise spaces in URIs (GitHub expects RFC 3986 URIs)
+                  uri = uri.replace(" ", "%20")
+                  key = (uri, base)
+                  if key not in artifact_map:
+                      # store a shallow copy with the normalised URI
+                      new_art = dict(artifact)
+                      new_loc = dict(loc)
+                      new_loc["uri"] = uri
+                      new_art["location"] = new_loc
+                      artifact_map[key] = new_art
+
+          unique_artifacts = list(artifact_map.values())
+
+          # -------------------------------------------------------------------
+          # 2. Merge rules (by rule id) and results.
+          # -------------------------------------------------------------------
+          merged_rules = []
+          seen_rule_ids = set()
+          merged_results = []
+
+          for run in runs:
+              driver = run.get("tool", {}).get("driver", {})
+              for rule in driver.get("rules", []):
+                  rid = rule.get("id")
+                  if rid and rid not in seen_rule_ids:
+                      seen_rule_ids.add(rid)
+                      merged_rules.append(rule)
+              merged_results.extend(run.get("results", []))
+
+          # -------------------------------------------------------------------
+          # 3. Build the single normalized run.
+          # -------------------------------------------------------------------
+          merged_run = {
+              "tool": {
+                  "driver": {
+                      "name": "Codacy Security Analysis",
+                      "rules": merged_rules,
+                  }
+              },
+              "results": merged_results,
+              "artifacts": unique_artifacts,
+          }
+
+          data["runs"] = [merged_run]
+
+          with sarif_path.open("w", encoding="utf-8") as fh:
+              json.dump(data, fh, indent=2)
+
+          print(
+              f"Merged {len(runs)} run(s) into 1. "
+              f"De-duplicated artifacts: {sum(len(r.get('artifacts', [])) for r in runs)} -> {len(unique_artifacts)}. "
+              f"Results: {len(merged_results)}."
+          )
+          PY
 
       - name: Upload SARIF results file
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
+          category: codacy        # helps avoid clashes with other SARIF uploads
