@@ -8,15 +8,15 @@
 ================================================================================
 """
 
-import os
-import sys
-import shutil
-import subprocess
-import time
-import re
-import signal
-import unicodedata
 import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import unicodedata
 
 # ==============================================================================
 # NEON GLOW & DARK CHARCOAL COLOR PALETTE (256-Color ANSI)
@@ -46,9 +46,11 @@ BADGE_GREEN = f"{C_BOLD}\033[48;5;46m\033[38;5;232m"
 BADGE_CYAN = f"{C_BOLD}\033[48;5;51m\033[38;5;232m"
 BADGE_YELLOW = f"{C_BOLD}\033[48;5;226m\033[38;5;232m"
 
-ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
-UBUNTU_ROOT = "/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs"
+UBUNTU_ROOT = (
+    "/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs"
+)
 HOME_DIR = "/data/data/com.termux/files/home"
 VAULT_DIR = os.path.join(HOME_DIR, ".config", "termux_sentinel")
 VAULT_FILE = os.path.join(VAULT_DIR, "vault.json")
@@ -59,7 +61,7 @@ CORE_SAFETY_KEYWORDS = [
     "whatsapp",
     "advanced-code-garage",
     "realme_bkp",
-    "cmf_bkp"
+    "cmf_bkp",
 ]
 
 DEFAULT_VAULT_ITEMS = [
@@ -69,7 +71,7 @@ DEFAULT_VAULT_ITEMS = [
         "pattern": "com.whatsapp",
         "type": "System Scope",
         "locked": True,
-        "date_added": "Default Core Shield"
+        "date_added": "Default Core Shield",
     },
     {
         "id": 2,
@@ -77,7 +79,7 @@ DEFAULT_VAULT_ITEMS = [
         "pattern": "whatsapp",
         "type": "Storage Scope",
         "locked": True,
-        "date_added": "Default Core Shield"
+        "date_added": "Default Core Shield",
     },
     {
         "id": 3,
@@ -85,7 +87,7 @@ DEFAULT_VAULT_ITEMS = [
         "pattern": "Advanced-Code-Garage",
         "type": "Active Workspace",
         "locked": True,
-        "date_added": "Default Core Shield"
+        "date_added": "Default Core Shield",
     },
     {
         "id": 4,
@@ -93,7 +95,7 @@ DEFAULT_VAULT_ITEMS = [
         "pattern": "Realme_BKP",
         "type": "Cloud Target",
         "locked": True,
-        "date_added": "Default Core Shield"
+        "date_added": "Default Core Shield",
     },
     {
         "id": 5,
@@ -101,9 +103,10 @@ DEFAULT_VAULT_ITEMS = [
         "pattern": "CMF_BKP",
         "type": "Cloud Target",
         "locked": True,
-        "date_added": "Default Core Shield"
-    }
+        "date_added": "Default Core Shield",
+    },
 ]
+
 
 # ==============================================================================
 # PRESERVATION VAULT STORAGE & LOGIC ENGINE
@@ -115,7 +118,7 @@ def load_vault():
         save_vault(DEFAULT_VAULT_ITEMS)
         return list(DEFAULT_VAULT_ITEMS)
     try:
-        with open(VAULT_FILE, 'r') as f:
+        with open(VAULT_FILE, "r") as f:
             data = json.load(f)
             if isinstance(data, list):
                 # Ensure core items are present
@@ -130,14 +133,16 @@ def load_vault():
     except Exception:
         return list(DEFAULT_VAULT_ITEMS)
 
+
 def save_vault(items):
     """Saves vault items safely to disk."""
     try:
         os.makedirs(VAULT_DIR, exist_ok=True)
-        with open(VAULT_FILE, 'w') as f:
+        with open(VAULT_FILE, "w") as f:
             json.dump(items, f, indent=2)
     except Exception:
         pass
+
 
 def add_to_vault(name, pattern, item_type="User Shield"):
     """Adds a new pattern/path to the Preservation Vault."""
@@ -155,11 +160,12 @@ def add_to_vault(name, pattern, item_type="User Shield"):
         "pattern": pattern.strip(),
         "type": item_type,
         "locked": False,
-        "date_added": time.strftime("%Y-%m-%d %H:%M")
+        "date_added": time.strftime("%Y-%m-%d %H:%M"),
     }
     items.append(new_item)
     save_vault(items)
     return True, new_item
+
 
 def remove_from_vault(item_id):
     """Removes a user-defined shield from the Vault (locked items are immune)."""
@@ -172,10 +178,14 @@ def remove_from_vault(item_id):
     if not target:
         return False, "Shield item not found in Vault"
     if target.get("locked"):
-        return False, "Core system shields (WhatsApp & Code Garage) are permanently locked for safety!"
+        return (
+            False,
+            "Core system shields (WhatsApp & Code Garage) are permanently locked for safety!",
+        )
     items = [it for it in items if it.get("id") != item_id]
     save_vault(items)
     return True, target
+
 
 def is_protected(path):
     """Global check: returns True if path matches core safety or any vault entry."""
@@ -195,6 +205,7 @@ def is_protected(path):
         pass
     return False
 
+
 # ==============================================================================
 # TERMINAL GEOMETRY & FORMATTING HELPERS (Mobile Clamped 44 Cols)
 # ==============================================================================
@@ -206,20 +217,23 @@ def get_term_cols():
     except Exception:
         return 44
 
+
 def char_width(ch):
-    if ch in ('\ufe0e', '\ufe0f'):
+    if ch in ("\ufe0e", "\ufe0f"):
         return 0
     w = unicodedata.east_asian_width(ch)
-    if w in ('W', 'F'):
+    if w in ("W", "F"):
         return 2
     if 0x1F300 <= ord(ch) <= 0x1FAFF:
         return 2
     return 1
 
+
 def visible_len(s):
     """Calculates visible character length disregarding ANSI escape sequences and accounting for wide glyphs."""
-    cleaned = ANSI_RE.sub('', s)
+    cleaned = ANSI_RE.sub("", s)
     return sum(char_width(ch) for ch in cleaned)
+
 
 def make_box_row(content, border_color=NEON_CYAN, cols=44):
     """Encloses content inside a double-border neon box row strictly clamped to cols."""
@@ -228,22 +242,23 @@ def make_box_row(content, border_color=NEON_CYAN, cols=44):
     pad = max(0, inner_w - v_len)
     return f"{border_color}║{C_RESET} {content}{' ' * pad} {border_color}║{C_RESET}"
 
+
 # ==============================================================================
 # 3D EMBOSSED ASCII BANNER & NEON INTRO ANIMATION
 # ==============================================================================
 # Individual letter components (T:7, E:5, R:5, M:8, U:7, X:6 -> total 38 chars)
 LETTER_PARTS_T = [" _____ ", "|_   _|", "  | |  ", "  |_|  "]
-LETTER_PARTS_E = [" ___ ",   "| __|",   "| _| ",   "|___|"]
-LETTER_PARTS_R = [" ___ ",   "| _ \\",  "|   /",   "|_|_\\"]
+LETTER_PARTS_E = [" ___ ", "| __|", "| _| ", "|___|"]
+LETTER_PARTS_R = [" ___ ", "| _ \\", "|   /", "|_|_\\"]
 LETTER_PARTS_M = [" __  __ ", "|  \\/  |", "| |\\/| |", "|_|  |_|"]
 LETTER_PARTS_U = [" _   _ ", "| | | |", "| |_| |", " \\___/ "]
 LETTER_PARTS_X = ["__  __", "\\ \\/ /", " >  < ", "/_/\\_\\"]
 
-COLOR_T = "\033[38;5;51;1m"   # Electric Neon Cyan
+COLOR_T = "\033[38;5;51;1m"  # Electric Neon Cyan
 COLOR_E = "\033[38;5;206;1m"  # Neon Hot Pink
 COLOR_R = "\033[38;5;226;1m"  # Luminous Cyber Yellow
 COLOR_M = "\033[38;5;208;1m"  # Vibrant Neon Orange
-COLOR_U = "\033[38;5;48;1m"   # Cyber Emerald Green
+COLOR_U = "\033[38;5;48;1m"  # Cyber Emerald Green
 COLOR_X = "\033[38;5;141;1m"  # Royal Neon Purple
 
 BANNER_3D_LINES = [
@@ -252,8 +267,9 @@ BANNER_3D_LINES = [
     r"    | |  | _| |   /| |\/| || |_| | >  <   ",
     r"    |_|  |___||_|_\|_|  |_| \___/ /_/\_\  ",
     r" ──────────────────────────────────────── ",
-    r"   ░▒▓██████ S E N T I N E L ██████▓▒░    "
+    r"   ░▒▓██████ S E N T I N E L ██████▓▒░    ",
 ]
+
 
 def render_3d_banner(border_color=NEON_CYAN, title_color=None, colorful=True):
     """Renders the responsive Cyber Termux-Sentinel banner with shape-lock guarantee."""
@@ -282,8 +298,12 @@ def render_3d_banner(border_color=NEON_CYAN, title_color=None, colorful=True):
             t_col = title_color or BRIGHT_WHITE
             letter_block = (
                 f"{C_BOLD}{t_col}"
-                + LETTER_PARTS_T[row] + LETTER_PARTS_E[row] + LETTER_PARTS_R[row]
-                + LETTER_PARTS_M[row] + LETTER_PARTS_U[row] + LETTER_PARTS_X[row]
+                + LETTER_PARTS_T[row]
+                + LETTER_PARTS_E[row]
+                + LETTER_PARTS_R[row]
+                + LETTER_PARTS_M[row]
+                + LETTER_PARTS_U[row]
+                + LETTER_PARTS_X[row]
                 + f"{C_RESET}"
             )
         content = (" " * pad_left) + letter_block + (" " * pad_right)
@@ -294,11 +314,23 @@ def render_3d_banner(border_color=NEON_CYAN, title_color=None, colorful=True):
     left_cnt = div_dash_count // 4
     right_cnt = div_dash_count // 4
     mid_cnt = div_dash_count - left_cnt - right_cnt
-    div_content = " " + "\033[38;5;141m" + ("─" * left_cnt) + "\033[38;5;206m" + ("─" * mid_cnt) + "\033[38;5;51m" + ("─" * right_cnt) + f"{C_RESET} "
+    div_content = (
+        " "
+        + "\033[38;5;141m"
+        + ("─" * left_cnt)
+        + "\033[38;5;206m"
+        + ("─" * mid_cnt)
+        + "\033[38;5;51m"
+        + ("─" * right_cnt)
+        + f"{C_RESET} "
+    )
     lines.append(f"{bchar}{div_content}{bchar}")
 
     # Luminous Sentinel subtitle with gradient fade badges
-    sub_core = "\033[38;5;45m░▒▓\033[38;5;51m██████" + f"{C_RESET} \033[1;93mS E N T I N E L{C_RESET} \033[38;5;206m██████\033[38;5;141m▓▒░{C_RESET}"
+    sub_core = (
+        "\033[38;5;45m░▒▓\033[38;5;51m██████"
+        + f"{C_RESET} \033[1;93mS E N T I N E L{C_RESET} \033[38;5;206m██████\033[38;5;141m▓▒░{C_RESET}"
+    )
     sub_pad_l = max(0, (inner - 35) // 2)
     sub_pad_r = max(0, inner - 35 - sub_pad_l)
     sub_content = (" " * sub_pad_l) + sub_core + (" " * sub_pad_r)
@@ -306,9 +338,11 @@ def render_3d_banner(border_color=NEON_CYAN, title_color=None, colorful=True):
     lines.append(bot)
     return "\n".join(lines)
 
+
 def print_large_header():
     """Prints the 3D Embossed Banner as the master application header."""
     print(render_3d_banner(NEON_CYAN, colorful=True))
+
 
 def animate_boot_glow():
     """High-animation 3D Embossed Startup Intro with circulating neon border."""
@@ -323,53 +357,68 @@ def animate_boot_glow():
     for b_color, msg, delay in frames:
         os.system("clear")
         print("\n" + render_3d_banner(border_color=b_color, colorful=True))
-        print(f"\n {BG_CHARCOAL} {C_BOLD}{b_color}[ ✦ ]{C_RESET} {BRIGHT_WHITE}{msg:<34}{C_RESET}")
+        print(
+            f"\n {BG_CHARCOAL} {C_BOLD}{b_color}[ ✦ ]{C_RESET} {BRIGHT_WHITE}{msg:<34}{C_RESET}"
+        )
         time.sleep(delay)
     time.sleep(0.12)
+
 
 # ==============================================================================
 # ANIMATION ENGINE (Red for deletions, Green for preserves/updates)
 # ==============================================================================
-SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
 
 def animate_step(phase, message, color=NEON_CYAN, duration=0.6):
     """Real-time animated live status indicator."""
     steps = int(duration / 0.05)
     for i in range(steps):
         spin = SPINNER_FRAMES[i % len(SPINNER_FRAMES)]
-        sys.stdout.write(f"\r  {BG_CHARCOAL}{C_BOLD}{color}[ {spin} {phase} ]{C_RESET} {BRIGHT_WHITE}{message[:32]}{C_RESET}   ")
+        sys.stdout.write(
+            f"\r  {BG_CHARCOAL}{C_BOLD}{color}[ {spin} {phase} ]{C_RESET} {BRIGHT_WHITE}{message[:32]}{C_RESET}   "
+        )
         sys.stdout.flush()
         time.sleep(0.05)
-    sys.stdout.write(f"\r  {BG_CHARCOAL}{C_BOLD}{color}[ ✓ {phase} ]{C_RESET} {BRIGHT_WHITE}{message[:32]}{C_RESET}\n")
+    sys.stdout.write(
+        f"\r  {BG_CHARCOAL}{C_BOLD}{color}[ ✓ {phase} ]{C_RESET} {BRIGHT_WHITE}{message[:32]}{C_RESET}\n"
+    )
     sys.stdout.flush()
+
 
 def animate_delete(message, duration=0.5):
     """Intense Red animated deletion feedback."""
     animate_step("DELETING", message, color=NEON_RED, duration=duration)
 
+
 def animate_terminate(message, duration=0.5):
     """Intense Red animated process termination feedback."""
     animate_step("TERMINATING", message, color=NEON_RED, duration=duration)
+
 
 def animate_safe(phase, message, duration=0.5):
     """Luminous Green animated success feedback."""
     animate_step(phase, message, color=NEON_GREEN, duration=duration)
 
+
 # ==============================================================================
 # STORAGE & DISK HELPERS
 # ==============================================================================
 def human_size(nbytes):
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if abs(nbytes) < 1024.0:
             return f"{nbytes:3.1f} {unit}"
         nbytes /= 1024.0
     return f"{nbytes:.1f} PB"
 
+
 def get_dir_size(path):
     if not os.path.exists(path):
         return 0
     try:
-        out = subprocess.check_output(['du', '-sk', path], stderr=subprocess.DEVNULL, timeout=1.8)
+        out = subprocess.check_output(
+            ["du", "-sk", path], stderr=subprocess.DEVNULL, timeout=1.8
+        )
         return int(out.split()[0]) * 1024
     except Exception:
         try:
@@ -380,6 +429,7 @@ def get_dir_size(path):
             return sz
         except Exception:
             return 0
+
 
 def get_disk_usage():
     try:
@@ -392,11 +442,24 @@ def get_disk_usage():
     except Exception:
         return "N/A", "N/A", "N/A", "N/A"
 
+
 def get_device_name():
     """Detects current mobile device brand & model dynamically."""
     try:
-        brand = subprocess.check_output(['getprop', 'ro.product.brand'], text=True, stderr=subprocess.DEVNULL).strip().upper()
-        model = subprocess.check_output(['getprop', 'ro.product.model'], text=True, stderr=subprocess.DEVNULL).strip().upper()
+        brand = (
+            subprocess.check_output(
+                ["getprop", "ro.product.brand"], text=True, stderr=subprocess.DEVNULL
+            )
+            .strip()
+            .upper()
+        )
+        model = (
+            subprocess.check_output(
+                ["getprop", "ro.product.model"], text=True, stderr=subprocess.DEVNULL
+            )
+            .strip()
+            .upper()
+        )
         if "REALME" in brand or "RMX" in model:
             return "REALME 12 PRO+"
         elif "NOTHING" in brand or "CMF" in brand or "A015" in model:
@@ -406,6 +469,7 @@ def get_device_name():
     except Exception:
         pass
     return "TERMUX SENTINEL"
+
 
 # ==============================================================================
 # NEON BORDER UI CONTAINERS & HEADERS
@@ -433,6 +497,7 @@ def render_hud_box(view_name="DASHBOARD"):
     print(make_box_row(r2, border_color=NEON_CYAN, cols=cols))
     print(bot)
 
+
 def print_section_h2(title, color=NEON_CYAN):
     cols = get_term_cols()
     inner_w = cols - 4
@@ -441,10 +506,12 @@ def print_section_h2(title, color=NEON_CYAN):
     print(f"{C_BOLD}{color}║ {t_trunc:<{inner_w}} ║{C_RESET}")
     print(f"{C_BOLD}{color}╚═" + "═" * (cols - 4) + "╝" + C_RESET)
 
+
 def print_divider_h3(title, color=NEON_PURPLE):
     cols = get_term_cols()
     fill = max(2, cols - len(title) - 6)
     print(f"\n{C_BOLD}{color}━━▶ {title} " + "━" * fill + C_RESET)
+
 
 # ==============================================================================
 # DATA TARGET DEFINITIONS (FILTERED BY PRESERVATION VAULT)
@@ -469,7 +536,7 @@ def define_cleaning_targets():
             "paths": [
                 os.path.join(HOME_DIR, ".cache", "uv"),
                 os.path.join(HOME_DIR, ".cache", "pnpm"),
-                os.path.join(HOME_DIR, ".cache", "skills-cache")
+                os.path.join(HOME_DIR, ".cache", "skills-cache"),
             ],
             "action_type": "remove_paths",
             "recommendation": "cache files (Safe to delete)",
@@ -512,7 +579,7 @@ def define_cleaning_targets():
             "name": "Modex duplicate & node_modules",
             "paths": [
                 os.path.join(HOME_DIR, "Modex-Sandbox-", "Modex-Sandbox-"),
-                os.path.join(HOME_DIR, "Modex-Sandbox-", "node_modules")
+                os.path.join(HOME_DIR, "Modex-Sandbox-", "node_modules"),
             ],
             "action_type": "remove_paths",
             "recommendation": "extra clone (Safe to delete)",
@@ -525,7 +592,15 @@ def define_cleaning_targets():
             "name": "AI Agent task logs (>7d old)",
             "paths": [
                 os.path.join(HOME_DIR, ".composio"),
-                os.path.join(HOME_DIR, ".gemini", "antigravity-cli", "brain", "*", ".system_generated", "tasks")
+                os.path.join(
+                    HOME_DIR,
+                    ".gemini",
+                    "antigravity-cli",
+                    "brain",
+                    "*",
+                    ".system_generated",
+                    "tasks",
+                ),
             ],
             "action_type": "remove_paths",
             "recommendation": "old task logs (Safe to delete)",
@@ -546,7 +621,9 @@ def define_cleaning_targets():
             "id": 9,
             "category": "clean",
             "name": "Dormant Debian container",
-            "paths": ["/data/data/com.termux/files/usr/var/lib/proot-distro/containers/debian-ai"],
+            "paths": [
+                "/data/data/com.termux/files/usr/var/lib/proot-distro/containers/debian-ai"
+            ],
             "action_type": "command",
             "cmd": ["proot-distro", "remove", "debian-ai"],
             "recommendation": "extra distro (Purge if unused)",
@@ -568,6 +645,7 @@ def define_cleaning_targets():
         filtered.append(t)
     return filtered
 
+
 def define_installed_apps():
     """Detects CLI/TUI apps and system dependencies, omitting Vault-preserved items."""
     raw_apps = [
@@ -578,7 +656,10 @@ def define_installed_apps():
             "app_type": "Agentic TUI",
             "name": "OpenCode AI TUI",
             "bin": os.path.join(HOME_DIR, ".opencode", "bin", "opencode"),
-            "data_dirs": [os.path.join(HOME_DIR, ".opencode"), os.path.join(HOME_DIR, ".opencode.json")],
+            "data_dirs": [
+                os.path.join(HOME_DIR, ".opencode"),
+                os.path.join(HOME_DIR, ".opencode.json"),
+            ],
             "uninstall_cmd": f"rm -rf {os.path.join(HOME_DIR, '.opencode')} {os.path.join(HOME_DIR, '.opencode.json')}",
             "extra_bins": [os.path.join(HOME_DIR, ".opencode", "bin", "opencode")],
             "extra_dirs": [os.path.join(HOME_DIR, ".opencode")],
@@ -595,7 +676,7 @@ def define_installed_apps():
             "extra_bins": ["/data/data/com.termux/files/usr/bin/qwen"],
             "extra_dirs": [
                 "/data/data/com.termux/files/usr/lib/node_modules/@qwen-code",
-                "/data/data/com.termux/files/usr/lib/node_modules/@mmmbuto/qwen-code-termux"
+                "/data/data/com.termux/files/usr/lib/node_modules/@mmmbuto/qwen-code-termux",
             ],
             "default": False,
         },
@@ -609,7 +690,7 @@ def define_installed_apps():
             "uninstall_cmd": "npm uninstall -g @mmmbuto/codex-cli-termux 2>/dev/null",
             "extra_bins": [
                 "/data/data/com.termux/files/usr/bin/codex",
-                "/data/data/com.termux/files/usr/bin/codex-exec"
+                "/data/data/com.termux/files/usr/bin/codex-exec",
             ],
             "extra_dirs": [
                 "/data/data/com.termux/files/usr/lib/node_modules/@mmmbuto/codex-cli-termux"
@@ -646,15 +727,16 @@ def define_installed_apps():
             "app_type": "Agentic CLI",
             "name": "Droid AI (droid@0.177.0)",
             "bin": os.path.join(HOME_DIR, ".local", "bin", "droid"),
-            "data_dirs": [os.path.join(HOME_DIR, ".local", "share", "droid"), os.path.join(HOME_DIR, ".droid")],
+            "data_dirs": [
+                os.path.join(HOME_DIR, ".local", "share", "droid"),
+                os.path.join(HOME_DIR, ".droid"),
+            ],
             "uninstall_cmd": "npm uninstall -g droid 2>/dev/null",
             "extra_bins": [
                 os.path.join(HOME_DIR, ".local", "bin", "droid"),
-                "/data/data/com.termux/files/usr/bin/droid"
+                "/data/data/com.termux/files/usr/bin/droid",
             ],
-            "extra_dirs": [
-                "/data/data/com.termux/files/usr/lib/node_modules/droid"
-            ],
+            "extra_dirs": ["/data/data/com.termux/files/usr/lib/node_modules/droid"],
             "default": False,
         },
         {
@@ -666,7 +748,9 @@ def define_installed_apps():
             "data_dirs": [],
             "uninstall_cmd": "npm uninstall -g rea-agents 2>/dev/null",
             "extra_bins": ["/data/data/com.termux/files/usr/bin/rea"],
-            "extra_dirs": ["/data/data/com.termux/files/usr/lib/node_modules/rea-agents"],
+            "extra_dirs": [
+                "/data/data/com.termux/files/usr/lib/node_modules/rea-agents"
+            ],
             "default": False,
         },
         {
@@ -681,7 +765,6 @@ def define_installed_apps():
             "extra_dirs": [os.path.join(HOME_DIR, "hermes-agent")],
             "default": False,
         },
-
         # CORE SYSTEM DEPENDENCIES & TOOLS (DIVIDER)
         {
             "id": 30,
@@ -717,11 +800,11 @@ def define_installed_apps():
             "uninstall_cmd": "npm uninstall -g pnpm 2>/dev/null",
             "extra_bins": [
                 "/data/data/com.termux/files/usr/bin/pnpm",
-                "/data/data/com.termux/files/usr/bin/pnpx"
+                "/data/data/com.termux/files/usr/bin/pnpx",
             ],
             "extra_dirs": [
                 "/data/data/com.termux/files/usr/lib/node_modules/pnpm",
-                os.path.join(HOME_DIR, ".local", "share", "pnpm")
+                os.path.join(HOME_DIR, ".local", "share", "pnpm"),
             ],
             "default": False,
         },
@@ -757,9 +840,12 @@ def define_installed_apps():
             continue
         bpath = a["bin"]
         is_inst = False
-        if os.path.exists(bpath) or shutil.which(os.path.basename(bpath)):
-            is_inst = True
-        elif a["app_type"] == "Autonomous Agent" and os.path.exists(a["data_dirs"][0]):
+        if (
+            os.path.exists(bpath)
+            or shutil.which(os.path.basename(bpath))
+            or a["app_type"] == "Autonomous Agent"
+            and os.path.exists(a["data_dirs"][0])
+        ):
             is_inst = True
 
         if is_inst:
@@ -768,6 +854,7 @@ def define_installed_apps():
             a["data_size_str"] = human_size(total_data_sz)
             installed.append(a)
     return installed
+
 
 def define_update_targets():
     """System & Dependency updates."""
@@ -814,13 +901,18 @@ def define_update_targets():
         },
     ]
 
+
 # ==============================================================================
 # SMART BOT & SILENT BACKGROUND DAEMON DETECTIVE ENGINE
 # ==============================================================================
 BOT_PATTERNS = [
-    re.compile(r'telegram|telebot|aiogram|discord|bot\.polling|bot\.run|bot_token|bottoken', re.I),
-    re.compile(r'webhook|slack_sdk|tweepy|cron', re.I)
+    re.compile(
+        r"telegram|telebot|aiogram|discord|bot\.polling|bot\.run|bot_token|bottoken",
+        re.IGNORECASE,
+    ),
+    re.compile(r"webhook|slack_sdk|tweepy|cron", re.IGNORECASE),
 ]
+
 
 def scan_bot_scripts():
     """Intelligently detects forgotten/standalone bot scripts in milliseconds."""
@@ -828,20 +920,41 @@ def scan_bot_scripts():
     targeted_dirs = [
         HOME_DIR,
         os.path.join(HOME_DIR, ".shortcuts"),
-        os.path.join(HOME_DIR, ".gemini", "antigravity-cli", "mcp", "multi_ai_router", "telegram_bot"),
-        os.path.join(HOME_DIR, ".codex", "skills", "shared_skills", "telegram-bridge-send", "scripts"),
+        os.path.join(
+            HOME_DIR,
+            ".gemini",
+            "antigravity-cli",
+            "mcp",
+            "multi_ai_router",
+            "telegram_bot",
+        ),
+        os.path.join(
+            HOME_DIR,
+            ".codex",
+            "skills",
+            "shared_skills",
+            "telegram-bridge-send",
+            "scripts",
+        ),
         os.path.join(HOME_DIR, "Modex-Sandbox-", "src", "server"),
         os.path.join(UBUNTU_ROOT, "root"),
     ]
 
     running_cmds = []
     my_uid = os.getuid()
-    for pid_str in os.listdir('/proc'):
+    for pid_str in os.listdir("/proc"):
         if pid_str.isdigit():
             try:
-                if os.stat(f'/proc/{pid_str}').st_uid == my_uid:
-                    with open(f'/proc/{pid_str}/cmdline', 'rb') as f:
-                        running_cmds.append((int(pid_str), f.read().decode('utf-8', errors='ignore').replace('\x00', ' ')))
+                if os.stat(f"/proc/{pid_str}").st_uid == my_uid:
+                    with open(f"/proc/{pid_str}/cmdline", "rb") as f:
+                        running_cmds.append(
+                            (
+                                int(pid_str),
+                                f.read()
+                                .decode("utf-8", errors="ignore")
+                                .replace("\x00", " "),
+                            )
+                        )
             except Exception:
                 pass
 
@@ -854,20 +967,25 @@ def scan_bot_scripts():
         try:
             for fname in os.listdir(base):
                 fpath = os.path.join(base, fname)
-                if not os.path.isfile(fpath) or fpath in visited or is_protected(fpath) or is_protected(fname):
+                if (
+                    not os.path.isfile(fpath)
+                    or fpath in visited
+                    or is_protected(fpath)
+                    or is_protected(fname)
+                ):
                     continue
                 visited.add(fpath)
 
-                if fname.endswith(('.py', '.js', '.sh', '.ts', '.mjs', '.bak')):
+                if fname.endswith((".py", ".js", ".sh", ".ts", ".mjs", ".bak")):
                     is_bot = False
                     reason = ""
                     fname_lower = fname.lower()
-                    if 'bot' in fname_lower or 'telegram' in fname_lower:
+                    if "bot" in fname_lower or "telegram" in fname_lower:
                         is_bot = True
                         reason = "Filename matches Bot/Telegram"
                     else:
                         try:
-                            with open(fpath, 'r', errors='ignore') as f:
+                            with open(fpath, "r", errors="ignore") as f:
                                 head = f.read(2048)
                                 for pat in BOT_PATTERNS:
                                     m = pat.search(head)
@@ -880,7 +998,9 @@ def scan_bot_scripts():
 
                     if is_bot:
                         st = os.stat(fpath)
-                        mtime = time.strftime('%Y-%m-%d %H:%M', time.localtime(st.st_mtime))
+                        mtime = time.strftime(
+                            "%Y-%m-%d %H:%M", time.localtime(st.st_mtime)
+                        )
                         active_pid = None
                         for pid, cmd in running_cmds:
                             if fname in cmd or fpath in cmd:
@@ -890,33 +1010,36 @@ def scan_bot_scripts():
                         if active_pid:
                             rec = f"⚠️ Active Daemon (PID: {active_pid}) - Review or Terminate"
                             rec_type = "active"
-                        elif fname.endswith('.bak') or 'scratch' in fpath:
+                        elif fname.endswith(".bak") or "scratch" in fpath:
                             rec = "extra file (Safe to delete backup/scratch)"
                             rec_type = "safe"
-                        elif 'shortcuts' in fpath:
+                        elif "shortcuts" in fpath:
                             rec = "widget launcher (Keep if using widget shortcut)"
                             rec_type = "review"
                         else:
                             rec = "standalone script (Delete if unneeded)"
                             rec_type = "safe"
 
-                        detected_bots.append({
-                            "id": idx,
-                            "type": "bot_script",
-                            "name": fname,
-                            "path": fpath,
-                            "size_str": human_size(st.st_size),
-                            "mtime": mtime,
-                            "reason": reason,
-                            "active_pid": active_pid,
-                            "recommendation": rec,
-                            "rec_type": rec_type,
-                            "default": False
-                        })
+                        detected_bots.append(
+                            {
+                                "id": idx,
+                                "type": "bot_script",
+                                "name": fname,
+                                "path": fpath,
+                                "size_str": human_size(st.st_size),
+                                "mtime": mtime,
+                                "reason": reason,
+                                "active_pid": active_pid,
+                                "recommendation": rec,
+                                "rec_type": rec_type,
+                                "default": False,
+                            }
+                        )
                         idx += 1
         except Exception:
             pass
     return detected_bots
+
 
 def scan_running_daemons():
     """Detects silently running background processes/daemons owned by current user."""
@@ -924,70 +1047,93 @@ def scan_running_daemons():
     my_uid = os.getuid()
     idx = 80
 
-    for pid_str in os.listdir('/proc'):
+    for pid_str in os.listdir("/proc"):
         if not pid_str.isdigit():
             continue
         try:
             pid = int(pid_str)
-            p_stat = os.stat(f'/proc/{pid_str}')
+            p_stat = os.stat(f"/proc/{pid_str}")
             if p_stat.st_uid != my_uid:
                 continue
 
-            with open(f'/proc/{pid_str}/cmdline', 'rb') as f:
+            with open(f"/proc/{pid_str}/cmdline", "rb") as f:
                 raw = f.read()
                 if not raw:
                     continue
-                parts = [p.decode('utf-8', errors='ignore') for p in raw.split(b'\x00') if p]
+                parts = [
+                    p.decode("utf-8", errors="ignore") for p in raw.split(b"\x00") if p
+                ]
                 if not parts:
                     continue
-                cmd = ' '.join(parts)
+                cmd = " ".join(parts)
                 cmd_lower = cmd.lower()
 
-                if any(k in cmd_lower for k in ['python', 'node', 'bun', 'bot.py', 'ollama', 'rclone', 'opencode', 'qwen', 'claude']):
-                    if 'termux_sentinel' in cmd_lower or 'ps -' in cmd_lower:
+                if any(
+                    k in cmd_lower
+                    for k in [
+                        "python",
+                        "node",
+                        "bun",
+                        "bot.py",
+                        "ollama",
+                        "rclone",
+                        "opencode",
+                        "qwen",
+                        "claude",
+                    ]
+                ):
+                    if "termux_sentinel" in cmd_lower or "ps -" in cmd_lower:
                         continue
 
                     script_path = None
                     for t in parts[1:]:
-                        if t.endswith(('.py', '.js', '.sh', '.ts', '.mjs')) and os.path.isfile(t):
+                        if t.endswith(
+                            (".py", ".js", ".sh", ".ts", ".mjs")
+                        ) and os.path.isfile(t):
                             script_path = t
                             break
 
                     mtime = "N/A"
                     if script_path and os.path.exists(script_path):
-                        mtime = time.strftime('%Y-%m-%d %H:%M', time.localtime(os.path.getmtime(script_path)))
+                        mtime = time.strftime(
+                            "%Y-%m-%d %H:%M",
+                            time.localtime(os.path.getmtime(script_path)),
+                        )
 
-                    if 'bot.py' in cmd_lower or 'telegram' in cmd_lower:
+                    if "bot.py" in cmd_lower or "telegram" in cmd_lower:
                         dtype = "🤖 Telegram Bot Daemon"
                         rec = "Active Bot (Terminate if not using Telegram Bot)"
-                    elif 'ollama' in cmd_lower:
+                    elif "ollama" in cmd_lower:
                         dtype = "🧠 AI Model Server (Ollama)"
                         rec = "Local LLM Backend (Terminate if using cloud API)"
-                    elif 'rclone' in cmd_lower:
+                    elif "rclone" in cmd_lower:
                         dtype = "☁️ Cloud Sync Engine (Rclone)"
                         rec = "Active Cloud Backup (Keep running to finish upload)"
-                    elif 'opencode' in cmd_lower or 'qwen' in cmd_lower:
+                    elif "opencode" in cmd_lower or "qwen" in cmd_lower:
                         dtype = "💻 Agent Session"
                         rec = "Active Terminal Agent (Terminate if orphaned)"
                     else:
                         dtype = "⚙️ Background Daemon"
                         rec = "Silent background worker (Terminate if forgotten)"
 
-                    daemons.append({
-                        "id": idx,
-                        "type": "daemon",
-                        "pid": pid,
-                        "dtype": dtype,
-                        "cmd": cmd,
-                        "script_path": script_path,
-                        "mtime": mtime,
-                        "recommendation": rec,
-                        "default": False
-                    })
+                    daemons.append(
+                        {
+                            "id": idx,
+                            "type": "daemon",
+                            "pid": pid,
+                            "dtype": dtype,
+                            "cmd": cmd,
+                            "script_path": script_path,
+                            "mtime": mtime,
+                            "recommendation": rec,
+                            "default": False,
+                        }
+                    )
                     idx += 1
         except Exception:
             pass
     return daemons
+
 
 # ==============================================================================
 # UI RENDERING ENGINES (ALL-AROUND NEON FRAMES, CLAMPED 44 COLS)
@@ -1003,7 +1149,9 @@ def render_main_view(clean_targets, update_targets, selected):
     name_w = 21
     for t in clean_targets:
         is_sel = selected.get(t["id"], False)
-        box = f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        box = (
+            f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        )
         size_str = f"({t['size_str']})"
 
         if t.get("rec_type") == "safe":
@@ -1011,35 +1159,86 @@ def render_main_view(clean_targets, update_targets, selected):
         else:
             rec_color = f"{NEON_YELLOW}⚠️  {t['recommendation'][:36]}{C_RESET}"
 
-        t_name = t['name'][:name_w]
+        t_name = t["name"][:name_w]
         if is_sel:
             reclaim_total += t["size_bytes"]
-            print(f"  {box} {t['id']:2d}. {BRIGHT_WHITE}{t_name:<{name_w}}{C_RESET} {NEON_RED}{size_str:>8}{C_RESET}")
+            print(
+                f"  {box} {t['id']:2d}. {BRIGHT_WHITE}{t_name:<{name_w}}{C_RESET} {NEON_RED}{size_str:>8}{C_RESET}"
+            )
         else:
-            print(f"  {box} {t['id']:2d}. {BRIGHT_WHITE}{t_name:<{name_w}}{C_RESET} {NEON_BLUE}{size_str:>8}{C_RESET}")
+            print(
+                f"  {box} {t['id']:2d}. {BRIGHT_WHITE}{t_name:<{name_w}}{C_RESET} {NEON_BLUE}{size_str:>8}{C_RESET}"
+            )
         print(f"    {rec_color}")
 
     # SECTION 2: SYSTEM & DEPENDENCY UPDATES
     print_section_h2("2. SYSTEM UPDATES (Select to Upgrade)", color=NEON_PURPLE)
     for t in update_targets:
         is_sel = selected.get(t["id"], False)
-        box = f"{NEON_GREEN}{C_BOLD}[X]{C_RESET}" if is_sel else f"{TEXT_MUTED}[ ]{C_RESET}"
+        box = (
+            f"{NEON_GREEN}{C_BOLD}[X]{C_RESET}"
+            if is_sel
+            else f"{TEXT_MUTED}[ ]{C_RESET}"
+        )
         print(f"  {box} {t['id']:2d}. {BRIGHT_WHITE}{t['name'][:cols-8]}{C_RESET}")
         print(f"    {TEXT_MUTED}↳ {t['recommendation'][:cols-8]}{C_RESET}")
 
     print("─" * cols)
-    print(f" {C_BOLD}{BRIGHT_WHITE}Space to Reclaim:{C_RESET} {NEON_GREEN}{C_BOLD}{human_size(reclaim_total)}{C_RESET}")
+    print(
+        f" {C_BOLD}{BRIGHT_WHITE}Space to Reclaim:{C_RESET} {NEON_GREEN}{C_BOLD}{human_size(reclaim_total)}{C_RESET}"
+    )
 
     # ALL-AROUND NEON NAVIGATION FOOTER
     print(f"\n{NEON_CYAN}╔═ COMMANDS & TOUCH NAVIGATION ════════════╗{C_RESET}")
-    print(make_box_row(f"{NEON_YELLOW}[Num]{C_RESET} Toggle item   {NEON_GREEN}[a]{C_RESET} Select Safe", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_BLUE}[n]{C_RESET} Deselect All    {NEON_PURPLE}[u]{C_RESET} Toggle Updates", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_RED}[c]{C_RESET} DELETE/PURGE    {NEON_GREEN}[p]{C_RESET} PRESERVE VAULT", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_CYAN}[v]{C_RESET} Shield Vault    {NEON_PINK}[m]{C_RESET} Apps Manager", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_CYAN}[s]{C_RESET} Bots & Daemons  {NEON_GREEN}[r]{C_RESET} Cloud Sync", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_YELLOW}[z]{C_RESET} Pause Screen", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_CYAN, cols=cols))
+    print(
+        make_box_row(
+            f"{NEON_YELLOW}[Num]{C_RESET} Toggle item   {NEON_GREEN}[a]{C_RESET} Select Safe",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_BLUE}[n]{C_RESET} Deselect All    {NEON_PURPLE}[u]{C_RESET} Toggle Updates",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_RED}[c]{C_RESET} DELETE/PURGE    {NEON_GREEN}[p]{C_RESET} PRESERVE VAULT",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[v]{C_RESET} Shield Vault    {NEON_PINK}[m]{C_RESET} Apps Manager",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[s]{C_RESET} Bots & Daemons  {NEON_GREEN}[r]{C_RESET} Cloud Sync",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_YELLOW}[z]{C_RESET} Pause Screen",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_CYAN, cols=cols
+        )
+    )
     print(f"{NEON_CYAN}╚══════════════════════════════════════════╝{C_RESET}")
+
 
 def render_apps_view(apps_targets, selected):
     cols = get_term_cols()
@@ -1055,28 +1254,61 @@ def render_apps_view(apps_targets, selected):
     name_w = 21
     for a in agentic_apps:
         is_sel = selected.get(a["id"], False)
-        box = f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        box = (
+            f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        )
         data_info = f"[{a['data_size_str']}]" if a.get("data_size_bytes", 0) > 0 else ""
-        print(f"  {box} {a['id']:2d}. {BRIGHT_WHITE}{a['name'][:name_w]:<{name_w}}{C_RESET} {NEON_YELLOW}{data_info:>10}{C_RESET}")
+        print(
+            f"  {box} {a['id']:2d}. {BRIGHT_WHITE}{a['name'][:name_w]:<{name_w}}{C_RESET} {NEON_YELLOW}{data_info:>10}{C_RESET}"
+        )
 
     print_divider_h3("DEPENDENCIES & DEV TOOLS", color=NEON_PURPLE)
     for d in dep_tools:
         is_sel = selected.get(d["id"], False)
-        box = f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        box = (
+            f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
+        )
         data_info = f"[{d['data_size_str']}]" if d.get("data_size_bytes", 0) > 0 else ""
-        print(f"  {box} {d['id']:2d}. {BRIGHT_WHITE}{d['name'][:name_w]:<{name_w}}{C_RESET} {NEON_YELLOW}{data_info:>10}{C_RESET}")
+        print(
+            f"  {box} {d['id']:2d}. {BRIGHT_WHITE}{d['name'][:name_w]:<{name_w}}{C_RESET} {NEON_YELLOW}{data_info:>10}{C_RESET}"
+        )
 
     print("─" * cols)
     sel_apps = [a for a in apps_targets if selected.get(a["id"], False)]
-    print(f" {C_BOLD}{BRIGHT_WHITE}Selected Apps:{C_RESET} {NEON_RED}{C_BOLD}{len(sel_apps)}{C_RESET}")
+    print(
+        f" {C_BOLD}{BRIGHT_WHITE}Selected Apps:{C_RESET} {NEON_RED}{C_BOLD}{len(sel_apps)}{C_RESET}"
+    )
 
     # ALL-AROUND NEON APPS NAVIGATION
     print(f"\n{NEON_PINK}╔═ APP MANAGEMENT COMMANDS ════════════════╗{C_RESET}")
-    print(make_box_row(f"{NEON_YELLOW}[Num]{C_RESET} Toggle App     {NEON_RED}[c]{C_RESET} UNINSTALL APPS", border_color=NEON_PINK, cols=cols))
-    print(make_box_row(f"{NEON_GREEN}[p]{C_RESET} PRESERVE VAULT  {NEON_CYAN}[v]{C_RESET} Shield Vault", border_color=NEON_PINK, cols=cols))
-    print(make_box_row(f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_BLUE}[b]{C_RESET} Back to Main", border_color=NEON_PINK, cols=cols))
-    print(make_box_row(f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_PINK, cols=cols))
+    print(
+        make_box_row(
+            f"{NEON_YELLOW}[Num]{C_RESET} Toggle App     {NEON_RED}[c]{C_RESET} UNINSTALL APPS",
+            border_color=NEON_PINK,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_GREEN}[p]{C_RESET} PRESERVE VAULT  {NEON_CYAN}[v]{C_RESET} Shield Vault",
+            border_color=NEON_PINK,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_BLUE}[b]{C_RESET} Back to Main",
+            border_color=NEON_PINK,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_PINK, cols=cols
+        )
+    )
     print(f"{NEON_PINK}╚══════════════════════════════════════════╝{C_RESET}")
+
 
 def render_bots_view(bot_scripts, running_daemons, selected):
     cols = get_term_cols()
@@ -1092,10 +1324,20 @@ def render_bots_view(bot_scripts, running_daemons, selected):
     else:
         for b in bot_scripts:
             is_sel = selected.get(b["id"], False)
-            box = f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
-            status_tag = f"{NEON_RED}● ACTIVE (PID {b['active_pid']}){C_RESET}" if b["active_pid"] else f"{TEXT_MUTED}💤 DORMANT{C_RESET}"
-            print(f"  {box} {b['id']:2d}. {BRIGHT_WHITE}{b['name'][:name_w]:<{name_w}}{C_RESET} {NEON_BLUE}({b['size_str']}){C_RESET}")
-            p_short = b['path'].split('/')[-1]
+            box = (
+                f"{NEON_RED}{C_BOLD}[X]{C_RESET}"
+                if is_sel
+                else f"{NEON_GREEN}[ ]{C_RESET}"
+            )
+            status_tag = (
+                f"{NEON_RED}● ACTIVE (PID {b['active_pid']}){C_RESET}"
+                if b["active_pid"]
+                else f"{TEXT_MUTED}💤 DORMANT{C_RESET}"
+            )
+            print(
+                f"  {box} {b['id']:2d}. {BRIGHT_WHITE}{b['name'][:name_w]:<{name_w}}{C_RESET} {NEON_BLUE}({b['size_str']}){C_RESET}"
+            )
+            p_short = b["path"].split("/")[-1]
             print(f"    {status_tag} | {C_DIM}{p_short}{C_RESET}")
             print(f"    {NEON_YELLOW}↳ {b['recommendation'][:34]}{C_RESET}")
 
@@ -1105,36 +1347,83 @@ def render_bots_view(bot_scripts, running_daemons, selected):
     else:
         for d in running_daemons:
             is_sel = selected.get(d["id"], False)
-            box = f"{NEON_RED}{C_BOLD}[X]{C_RESET}" if is_sel else f"{NEON_GREEN}[ ]{C_RESET}"
-            print(f"  {box} {d['id']:2d}. {NEON_PINK}{d['dtype'][:20]}{C_RESET} {BRIGHT_WHITE}(PID {d['pid']}){C_RESET}")
+            box = (
+                f"{NEON_RED}{C_BOLD}[X]{C_RESET}"
+                if is_sel
+                else f"{NEON_GREEN}[ ]{C_RESET}"
+            )
+            print(
+                f"  {box} {d['id']:2d}. {NEON_PINK}{d['dtype'][:20]}{C_RESET} {BRIGHT_WHITE}(PID {d['pid']}){C_RESET}"
+            )
             print(f"    {C_DIM}Cmd: {d['cmd'][:32]}{C_RESET}")
-            if d['script_path']:
-                sp_short = d['script_path'].split('/')[-1]
+            if d["script_path"]:
+                sp_short = d["script_path"].split("/")[-1]
                 print(f"    {NEON_BLUE}{sp_short} ({d['mtime']}){C_RESET}")
             print(f"    {NEON_YELLOW}↳ {d['recommendation'][:34]}{C_RESET}")
 
     print("─" * cols)
     sel_bots = [b for b in bot_scripts if selected.get(b["id"], False)]
     sel_daemons = [d for d in running_daemons if selected.get(d["id"], False)]
-    print(f" {C_BOLD}{BRIGHT_WHITE}Selected:{C_RESET} {NEON_RED}{len(sel_bots)} Scripts | {len(sel_daemons)} Daemons{C_RESET}")
+    print(
+        f" {C_BOLD}{BRIGHT_WHITE}Selected:{C_RESET} {NEON_RED}{len(sel_bots)} Scripts | {len(sel_daemons)} Daemons{C_RESET}"
+    )
 
     # ALL-AROUND NEON BOTS NAVIGATION
     print(f"\n{NEON_CYAN}╔═ BOT DETECTIVE COMMANDS ═════════════════╗{C_RESET}")
-    print(make_box_row(f"{NEON_YELLOW}[Num]{C_RESET} Toggle Item    {NEON_RED}[c]{C_RESET} KILL / PURGE", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_GREEN}[p]{C_RESET} PRESERVE VAULT  {NEON_CYAN}[v]{C_RESET} Shield Vault", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_BLUE}[b]{C_RESET} Back to Main", border_color=NEON_CYAN, cols=cols))
-    print(make_box_row(f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_CYAN, cols=cols))
+    print(
+        make_box_row(
+            f"{NEON_YELLOW}[Num]{C_RESET} Toggle Item    {NEON_RED}[c]{C_RESET} KILL / PURGE",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_GREEN}[p]{C_RESET} PRESERVE VAULT  {NEON_CYAN}[v]{C_RESET} Shield Vault",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[f]{C_RESET} Refresh State   {NEON_BLUE}[b]{C_RESET} Back to Main",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_CYAN, cols=cols
+        )
+    )
     print(f"{NEON_CYAN}╚══════════════════════════════════════════╝{C_RESET}")
+
 
 def render_vault_view(vault_items):
     """Dedicated Preservation Vault View (Shield Registry)."""
     cols = get_term_cols()
     print_large_header()
     vtitle = "═ 🛡️ PRESERVED SHIELDS "
-    v_top = f"{NEON_GREEN}╔{vtitle}" + "═" * (cols - 2 - visible_len(vtitle)) + f"╗{C_RESET}"
+    v_top = (
+        f"{NEON_GREEN}╔{vtitle}"
+        + "═" * (cols - 2 - visible_len(vtitle))
+        + f"╗{C_RESET}"
+    )
     print(v_top)
-    print(make_box_row(f"{BRIGHT_WHITE}PERMANENT ZERO-TOUCH SHIELD REGISTRY{C_RESET}", border_color=NEON_GREEN, cols=cols))
-    print(make_box_row(f"{TEXT_MUTED}Excluded from all audits & deletions{C_RESET}", border_color=NEON_GREEN, cols=cols))
+    print(
+        make_box_row(
+            f"{BRIGHT_WHITE}PERMANENT ZERO-TOUCH SHIELD REGISTRY{C_RESET}",
+            border_color=NEON_GREEN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{TEXT_MUTED}Excluded from all audits & deletions{C_RESET}",
+            border_color=NEON_GREEN,
+            cols=cols,
+        )
+    )
     print(f"{NEON_GREEN}╚" + "═" * (cols - 2) + f"╝{C_RESET}")
 
     print_divider_h3("ACTIVE PRESERVED SHIELDS", color=NEON_GREEN)
@@ -1153,15 +1442,30 @@ def render_vault_view(vault_items):
             else:
                 status_str = f"{BADGE_CYAN} 🔒 USER SHIELD {C_RESET}"
 
-            print(f"  {NEON_GREEN}[{iid}]{C_RESET} {BRIGHT_WHITE}{C_BOLD}{name[:28]}{C_RESET}")
+            print(
+                f"  {NEON_GREEN}[{iid}]{C_RESET} {BRIGHT_WHITE}{C_BOLD}{name[:28]}{C_RESET}"
+            )
             print(f"      {status_str} {NEON_PURPLE}• {itype}{C_RESET}")
             print(f"      {C_DIM}Pattern: {pat[:34]}{C_RESET}")
 
     print("─" * cols)
     print(f"\n{NEON_GREEN}╔═ PRESERVATION VAULT COMMANDS ════════════╗{C_RESET}")
-    print(make_box_row(f"{NEON_CYAN}[+]{C_RESET} Add Custom Path {NEON_YELLOW}[-]{C_RESET} Remove Shield", border_color=NEON_GREEN, cols=cols))
-    print(make_box_row(f"{NEON_BLUE}[b]{C_RESET} Back to Main    {NEON_RED}[q]{C_RESET} Cancel & Exit", border_color=NEON_GREEN, cols=cols))
+    print(
+        make_box_row(
+            f"{NEON_CYAN}[+]{C_RESET} Add Custom Path {NEON_YELLOW}[-]{C_RESET} Remove Shield",
+            border_color=NEON_GREEN,
+            cols=cols,
+        )
+    )
+    print(
+        make_box_row(
+            f"{NEON_BLUE}[b]{C_RESET} Back to Main    {NEON_RED}[q]{C_RESET} Cancel & Exit",
+            border_color=NEON_GREEN,
+            cols=cols,
+        )
+    )
     print(f"{NEON_GREEN}╚══════════════════════════════════════════╝{C_RESET}")
+
 
 # ==============================================================================
 # CLOUD STATUS & ACTIONS
@@ -1173,13 +1477,20 @@ def show_rclone_status():
     print_section_h2("📡 RCLONE CLOUD BACKUP LIVE TELEMETRY", color=NEON_CYAN)
     ps = subprocess.run(["pgrep", "-f", "rclone"], capture_output=True, text=True)
     if ps.returncode == 0:
-        print(f"  {BADGE_GREEN} ACTIVE & UPLOADING {C_RESET} {BRIGHT_WHITE}Streaming backup to Google Drive...{C_RESET}")
+        print(
+            f"  {BADGE_GREEN} ACTIVE & UPLOADING {C_RESET} {BRIGHT_WHITE}Streaming backup to Google Drive...{C_RESET}"
+        )
     else:
-        print(f"  {BADGE_YELLOW} IDLE / COMPLETED {C_RESET} {TEXT_MUTED}No background rclone sync active.{C_RESET}")
+        print(
+            f"  {BADGE_YELLOW} IDLE / COMPLETED {C_RESET} {TEXT_MUTED}No background rclone sync active.{C_RESET}"
+        )
     print("─" * cols)
     print(f"{C_BOLD}{NEON_CYAN}Recent Upload Stream (last 15 lines):{C_RESET}")
 
-    logs = [os.path.join(HOME_DIR, "test_trace.log"), os.path.join(HOME_DIR, "rclone_backup.log")]
+    logs = [
+        os.path.join(HOME_DIR, "test_trace.log"),
+        os.path.join(HOME_DIR, "rclone_backup.log"),
+    ]
     found_log = False
     for l in logs:
         if os.path.exists(l) and os.path.getsize(l) > 0:
@@ -1190,7 +1501,10 @@ def show_rclone_status():
     if not found_log:
         print("  No active rclone log file available.")
     print("─" * cols)
-    input(f"\n{C_BOLD}{BRIGHT_WHITE}Press Enter to return to Termux_Sentinel...{C_RESET}")
+    input(
+        f"\n{C_BOLD}{BRIGHT_WHITE}Press Enter to return to Termux_Sentinel...{C_RESET}"
+    )
+
 
 # ==============================================================================
 # DUAL-ACTION: PRESERVE SELECTED TO VAULT (GREEN)
@@ -1202,67 +1516,84 @@ def execute_preserve(current_view, selected, clean_targets, apps_targets, bot_sc
     if current_view == "main":
         for t in clean_targets:
             if selected.get(t["id"]):
-                items_to_preserve.append({
-                    "name": t["name"],
-                    "pattern": t["name"],
-                    "type": "Preserved Target"
-                })
+                items_to_preserve.append(
+                    {
+                        "name": t["name"],
+                        "pattern": t["name"],
+                        "type": "Preserved Target",
+                    }
+                )
                 for p in t.get("paths", []):
-                    items_to_preserve.append({
-                        "name": f"{t['name']} Path",
-                        "pattern": p,
-                        "type": "Target Path"
-                    })
+                    items_to_preserve.append(
+                        {
+                            "name": f"{t['name']} Path",
+                            "pattern": p,
+                            "type": "Target Path",
+                        }
+                    )
     elif current_view == "apps":
         for a in apps_targets:
             if selected.get(a["id"]):
-                items_to_preserve.append({
-                    "name": a["name"],
-                    "pattern": a["name"],
-                    "type": f"Preserved App ({a['app_type']})"
-                })
+                items_to_preserve.append(
+                    {
+                        "name": a["name"],
+                        "pattern": a["name"],
+                        "type": f"Preserved App ({a['app_type']})",
+                    }
+                )
                 for d in a.get("data_dirs", []):
-                    items_to_preserve.append({
-                        "name": f"{a['name']} Data",
-                        "pattern": d,
-                        "type": "Preserved App Data"
-                    })
+                    items_to_preserve.append(
+                        {
+                            "name": f"{a['name']} Data",
+                            "pattern": d,
+                            "type": "Preserved App Data",
+                        }
+                    )
     elif current_view == "bots":
         for b in bot_scripts:
             if selected.get(b["id"]):
-                items_to_preserve.append({
-                    "name": b["name"],
-                    "pattern": b["path"],
-                    "type": "Trusted Script"
-                })
+                items_to_preserve.append(
+                    {"name": b["name"], "pattern": b["path"], "type": "Trusted Script"}
+                )
 
     if not items_to_preserve:
-        print(f"\n{NEON_YELLOW}⚠️  No items selected! Tick checkboxes with [Num] first.{C_RESET}")
+        print(
+            f"\n{NEON_YELLOW}⚠️  No items selected! Tick checkboxes with [Num] first.{C_RESET}"
+        )
         time.sleep(1.2)
         return False
 
-    animate_safe("VAULTING", f"Moving {len(items_to_preserve)} item(s) into Preservation Vault...", duration=0.8)
+    animate_safe(
+        "VAULTING",
+        f"Moving {len(items_to_preserve)} item(s) into Preservation Vault...",
+        duration=0.8,
+    )
     added_count = 0
     for it in items_to_preserve:
         ok, res = add_to_vault(it["name"], it["pattern"], it["type"])
         if ok:
             added_count += 1
-            print(f"    {NEON_GREEN}✓ Shielded:{C_RESET} {BRIGHT_WHITE}{it['name']}{C_RESET}")
+            print(
+                f"    {NEON_GREEN}✓ Shielded:{C_RESET} {BRIGHT_WHITE}{it['name']}{C_RESET}"
+            )
 
     # Unselect all preserved items
     for k in list(selected.keys()):
         selected[k] = False
 
-    print(f"\n  {BADGE_GREEN} PRESERVED {C_RESET} {BRIGHT_WHITE}Secured {added_count} items in Vault! Permanently hidden from future scans.{C_RESET}")
+    print(
+        f"\n  {BADGE_GREEN} PRESERVED {C_RESET} {BRIGHT_WHITE}Secured {added_count} items in Vault! Permanently hidden from future scans.{C_RESET}"
+    )
     time.sleep(1.5)
     return True
+
 
 # ==============================================================================
 # VAULT INTERACTIVE ADD / REMOVE
 # ==============================================================================
 def handle_vault_add():
     """Interactive custom shield addition."""
-    cols = get_term_cols()
+    get_term_cols()
     print(f"\n{NEON_CYAN}╔═ ADD CUSTOM SHIELD TO VAULT ═════════════╗{C_RESET}")
     print(f" {TEXT_MUTED}Enter absolute path or keyword pattern to shield:{C_RESET}")
     try:
@@ -1288,9 +1619,10 @@ def handle_vault_add():
         print(f"\n{NEON_YELLOW}⚠️  {res}{C_RESET}")
         time.sleep(1.5)
 
+
 def handle_vault_remove():
     """Interactive custom shield removal."""
-    cols = get_term_cols()
+    get_term_cols()
     print(f"\n{NEON_YELLOW}╔═ REMOVE SHIELD FROM VAULT ═══════════════╗{C_RESET}")
     print(f" {TEXT_MUTED}Enter shield item number [#] to remove:{C_RESET}")
     try:
@@ -1304,22 +1636,31 @@ def handle_vault_remove():
 
     ok, res = remove_from_vault(int(target_str))
     if ok:
-        animate_safe("UNSHIELDED", f"Removed '{res['name']}' from Vault. Restored to scans.", duration=0.6)
+        animate_safe(
+            "UNSHIELDED",
+            f"Removed '{res['name']}' from Vault. Restored to scans.",
+            duration=0.6,
+        )
     else:
         print(f"\n{BADGE_RED} BLOCKED {C_RESET} {NEON_RED}{res}{C_RESET}")
         time.sleep(1.8)
 
+
 # ==============================================================================
 # EXECUTION ENGINE WITH FULL COLOR-CODED ANIMATIONS (RED DELETE / GREEN UPDATE)
 # ==============================================================================
-def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, running_daemons, selected):
+def execute_actions(
+    clean_targets, apps_targets, update_targets, bot_scripts, running_daemons, selected
+):
     clean_items = [t for t in clean_targets if selected.get(t["id"])]
     update_items = [t for t in update_targets if selected.get(t["id"])]
     uninstall_items = [a for a in apps_targets if selected.get(a["id"])]
     del_bot_items = [b for b in bot_scripts if selected.get(b["id"])]
     kill_daemon_items = [d for d in running_daemons if selected.get(d["id"])]
 
-    if not any([clean_items, update_items, uninstall_items, del_bot_items, kill_daemon_items]):
+    if not any(
+        [clean_items, update_items, uninstall_items, del_bot_items, kill_daemon_items]
+    ):
         print(f"\n{NEON_YELLOW}No items selected for execution.{C_RESET}")
         time.sleep(1.2)
         return
@@ -1331,14 +1672,18 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
     print_section_h2("⚠️  TERMUX_SENTINEL: FINAL CONFIRMATION  ⚠️", color=NEON_RED)
 
     if clean_items:
-        print(f"\n{C_BOLD}{NEON_RED}▶ STORAGE CACHES TO PURGE ({human_size(total_reclaim)} Reclaimed):{C_RESET}")
+        print(
+            f"\n{C_BOLD}{NEON_RED}▶ STORAGE CACHES TO PURGE ({human_size(total_reclaim)} Reclaimed):{C_RESET}"
+        )
         for t in clean_items:
             print(f"   • {BRIGHT_WHITE}{t['name']} ({t['size_str']}){C_RESET}")
 
     if uninstall_items:
         print(f"\n{C_BOLD}{NEON_RED}▶ APPS TO UNINSTALL:{C_RESET}")
         for a in uninstall_items:
-            print(f"   • {BRIGHT_WHITE}{a['name']} ({a.get('data_size_str', '0 B')} data){C_RESET}")
+            print(
+                f"   • {BRIGHT_WHITE}{a['name']} ({a.get('data_size_str', '0 B')} data){C_RESET}"
+            )
 
     if del_bot_items:
         print(f"\n{C_BOLD}{NEON_RED}▶ ROGUE BOT SCRIPTS TO DELETE:{C_RESET}")
@@ -1355,14 +1700,19 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
         for t in update_items:
             print(f"   • {BRIGHT_WHITE}{t['name']}{C_RESET}")
 
-    print(f"\n{BADGE_RED} PROCEED? {C_RESET} {C_BOLD}{BRIGHT_WHITE}Execute operations now? (y/N): {C_RESET}", end="")
+    print(
+        f"\n{BADGE_RED} PROCEED? {C_RESET} {C_BOLD}{BRIGHT_WHITE}Execute operations now? (y/N): {C_RESET}",
+        end="",
+    )
     try:
         conf = input().strip().lower()
     except Exception:
         conf = "n"
 
-    if conf not in ['y', 'yes']:
-        print(f"\n{NEON_BLUE}Operation cancelled by operator. Nothing was touched.{C_RESET}")
+    if conf not in ["y", "yes"]:
+        print(
+            f"\n{NEON_BLUE}Operation cancelled by operator. Nothing was touched.{C_RESET}"
+        )
         time.sleep(1.5)
         return
 
@@ -1437,13 +1787,17 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
                                 os.remove(p)
                             print(f"    {NEON_RED}✓ Removed: {p}{C_RESET}")
                         except Exception as e:
-                            print(f"    {NEON_YELLOW}✗ Error removing {p}: {e}{C_RESET}")
+                            print(
+                                f"    {NEON_YELLOW}✗ Error removing {p}: {e}{C_RESET}"
+                            )
 
     # 4. Uninstall Apps & Data Prompt
     if uninstall_items:
         print_divider_h3("UNINSTALLING APPLICATIONS", color=NEON_RED)
         for a in uninstall_items:
-            animate_step("UNINSTALLING", f"Removing {a['name']}...", color=NEON_RED, duration=0.7)
+            animate_step(
+                "UNINSTALLING", f"Removing {a['name']}...", color=NEON_RED, duration=0.7
+            )
             subprocess.run(a["uninstall_cmd"], shell=True)
 
             # Fail-safe: ensure primary binary/symlink is completely eliminated
@@ -1471,11 +1825,18 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
                     shutil.rmtree(ed, ignore_errors=True)
 
             subprocess.run("hash -r 2>/dev/null", shell=True)
-            print(f"    {NEON_RED}✓ Binary & package completely wiped for {a['name']}{C_RESET}")
+            print(
+                f"    {NEON_RED}✓ Binary & package completely wiped for {a['name']}{C_RESET}"
+            )
 
             if a.get("data_dirs"):
-                print(f"\n    {NEON_YELLOW}App '{a['name']}' has {a['data_size_str']} stored data.{C_RESET}")
-                print(f"    {C_BOLD}{BRIGHT_WHITE}Remove stored app data? (YES/NO): {C_RESET}", end="")
+                print(
+                    f"\n    {NEON_YELLOW}App '{a['name']}' has {a['data_size_str']} stored data.{C_RESET}"
+                )
+                print(
+                    f"    {C_BOLD}{BRIGHT_WHITE}Remove stored app data? (YES/NO): {C_RESET}",
+                    end="",
+                )
                 try:
                     data_conf = input().strip().lower()
                 except Exception:
@@ -1485,7 +1846,9 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
                     animate_delete(f"Purging data directories of {a['name']}...")
                     for d in a["data_dirs"]:
                         if is_protected(d):
-                            print(f"    {NEON_GREEN}🛡️ Protected by Vault: {d}{C_RESET}")
+                            print(
+                                f"    {NEON_GREEN}🛡️ Protected by Vault: {d}{C_RESET}"
+                            )
                             continue
                         if os.path.exists(d):
                             try:
@@ -1497,7 +1860,11 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
                             except Exception as e:
                                 print(f"    {NEON_YELLOW}✗ Error: {e}{C_RESET}")
                 else:
-                    animate_safe("PRESERVED", f"App data for {a['name']} preserved securely.", duration=0.4)
+                    animate_safe(
+                        "PRESERVED",
+                        f"App data for {a['name']} preserved securely.",
+                        duration=0.4,
+                    )
 
     # 5. System & Dependency Updates (GREEN)
     if update_items:
@@ -1508,15 +1875,22 @@ def execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, ru
             print(f"    {NEON_GREEN}✓ Update finished for {t['name']}{C_RESET}")
 
     # Reset selection for all executed items
-    for item in (clean_items + update_items + uninstall_items + del_bot_items + kill_daemon_items):
+    for item in (
+        clean_items + update_items + uninstall_items + del_bot_items + kill_daemon_items
+    ):
         selected[item["id"]] = False
 
     print("\n" + "─" * cols)
-    animate_safe("COMPLETED", "All operations executed with 100% integrity!", duration=0.8)
+    animate_safe(
+        "COMPLETED", "All operations executed with 100% integrity!", duration=0.8
+    )
     used, total, free, pct = get_disk_usage()
-    print(f"\n {BG_CHARCOAL} {C_BOLD}{BRIGHT_WHITE}UPDATED STORAGE:{C_RESET} Used: {NEON_YELLOW}{used}{C_RESET} | Free: {NEON_GREEN}{C_BOLD}{free}{C_RESET} ({NEON_PINK}{pct} full{C_RESET})")
+    print(
+        f"\n {BG_CHARCOAL} {C_BOLD}{BRIGHT_WHITE}UPDATED STORAGE:{C_RESET} Used: {NEON_YELLOW}{used}{C_RESET} | Free: {NEON_GREEN}{C_BOLD}{free}{C_RESET} ({NEON_PINK}{pct} full{C_RESET})"
+    )
     print("─" * cols)
     input(f"{C_BOLD}{BRIGHT_WHITE}Press Enter to return to Termux_Sentinel...{C_RESET}")
+
 
 # ==============================================================================
 # MAIN EVENT LOOP
@@ -1556,7 +1930,13 @@ def main():
 
         try:
             prompt_tag = f"[{current_view.upper()}]"
-            choice = input(f"\n{BG_CHARCOAL}{C_BOLD}{NEON_CYAN} Termux_Sentinel {prompt_tag} ❯ {C_RESET}").strip().lower()
+            choice = (
+                input(
+                    f"\n{BG_CHARCOAL}{C_BOLD}{NEON_CYAN} Termux_Sentinel {prompt_tag} ❯ {C_RESET}"
+                )
+                .strip()
+                .lower()
+            )
         except (KeyboardInterrupt, EOFError):
             print(f"\n{NEON_BLUE}Exiting Termux_Sentinel.{C_RESET}")
             break
@@ -1564,72 +1944,93 @@ def main():
         if not choice:
             continue
 
-        if choice == 'q':
-            animate_step("CLOSING", "Termux_Sentinel shutting down safely...", color=NEON_BLUE, duration=0.4)
+        if choice == "q":
+            animate_step(
+                "CLOSING",
+                "Termux_Sentinel shutting down safely...",
+                color=NEON_BLUE,
+                duration=0.4,
+            )
             break
-        elif choice == 'c':
-            execute_actions(clean_targets, apps_targets, update_targets, bot_scripts, running_daemons, selected)
-            animate_safe("REFRESHING", "Reloading fresh system & app telemetry...", duration=0.6)
+        elif choice == "c":
+            execute_actions(
+                clean_targets,
+                apps_targets,
+                update_targets,
+                bot_scripts,
+                running_daemons,
+                selected,
+            )
+            animate_safe(
+                "REFRESHING", "Reloading fresh system & app telemetry...", duration=0.6
+            )
             clean_targets = define_cleaning_targets()
             apps_targets = define_installed_apps()
             bot_scripts = scan_bot_scripts()
             running_daemons = scan_running_daemons()
-        elif choice == 'f':
-            animate_safe("REFRESHING", "Scanning and reloading fresh telemetry...", duration=0.6)
+        elif choice == "f":
+            animate_safe(
+                "REFRESHING", "Scanning and reloading fresh telemetry...", duration=0.6
+            )
             clean_targets = define_cleaning_targets()
             apps_targets = define_installed_apps()
             bot_scripts = scan_bot_scripts()
             running_daemons = scan_running_daemons()
-        elif choice == 'p':
+        elif choice == "p":
             if current_view == "vault":
                 print(f"\n{NEON_YELLOW}Already inside Preservation Vault.{C_RESET}")
                 time.sleep(1.0)
             else:
-                ok = execute_preserve(current_view, selected, clean_targets, apps_targets, bot_scripts)
+                ok = execute_preserve(
+                    current_view, selected, clean_targets, apps_targets, bot_scripts
+                )
                 if ok:
                     clean_targets = define_cleaning_targets()
                     apps_targets = define_installed_apps()
                     bot_scripts = scan_bot_scripts()
-        elif choice == 'v':
+        elif choice == "v":
             current_view = "vault"
-        elif choice == 'm':
+        elif choice == "m":
             current_view = "apps"
-        elif choice == 's':
+        elif choice == "s":
             current_view = "bots"
-        elif choice == 'b':
+        elif choice == "b":
             current_view = "main"
-        elif choice == '+' and current_view == "vault":
+        elif choice == "+" and current_view == "vault":
             handle_vault_add()
-        elif choice == '-' and current_view == "vault":
+        elif choice == "-" and current_view == "vault":
             handle_vault_remove()
-        elif choice == 'a' and current_view == "main":
+        elif choice == "a" and current_view == "main":
             for t in clean_targets:
                 selected[t["id"]] = True
-        elif choice == 'n' and current_view == "main":
+        elif choice == "n" and current_view == "main":
             for t in clean_targets:
                 selected[t["id"]] = False
-        elif choice == 'u' and current_view == "main":
+        elif choice == "u" and current_view == "main":
             curr = any(selected[t["id"]] for t in update_targets)
             for t in update_targets:
                 selected[t["id"]] = not curr
-        elif choice == 'r':
+        elif choice == "r":
             show_rclone_status()
-        elif choice == 'z':
-            print(f"\n{NEON_YELLOW}Sentinel paused. No background changes made.{C_RESET}")
+        elif choice == "z":
+            print(
+                f"\n{NEON_YELLOW}Sentinel paused. No background changes made.{C_RESET}"
+            )
             input(f"{C_BOLD}{BRIGHT_WHITE}Press Enter to resume Sentinel...{C_RESET}")
         else:
-            parts = choice.replace(',', ' ').split()
+            parts = choice.replace(",", " ").split()
             for part in parts:
                 if part.isdigit():
                     num = int(part)
                     if num in selected:
                         selected[num] = not selected[num]
 
+
 # ==============================================================================
 # CLI NON-INTERACTIVE COMMAND HANDLERS
 # ==============================================================================
 def cli_audit():
-    cols = get_term_cols()
+    get_term_cols()
     print_large_header()
     render_hud_box("AUDIT")
 
@@ -1645,16 +2046,26 @@ def cli_audit():
         sz = t["size_bytes"]
         reclaimable += sz
         rec = t.get("recommendation", "")[:28]
-        badge = f"{NEON_GREEN}SAFE{C_RESET}" if t.get("rec_type") == "safe" else f"{NEON_YELLOW}REV{C_RESET}"
-        print(f"  • {BRIGHT_WHITE}{t['name'][:22]:<22}{C_RESET} {NEON_CYAN}{t['size_str']:>8}{C_RESET} [{badge}]")
+        badge = (
+            f"{NEON_GREEN}SAFE{C_RESET}"
+            if t.get("rec_type") == "safe"
+            else f"{NEON_YELLOW}REV{C_RESET}"
+        )
+        print(
+            f"  • {BRIGHT_WHITE}{t['name'][:22]:<22}{C_RESET} {NEON_CYAN}{t['size_str']:>8}{C_RESET} [{badge}]"
+        )
         print(f"    {TEXT_MUTED}↳ {rec}{C_RESET}")
 
-    print(f"\n  {C_BOLD}{BRIGHT_WHITE}Reclaimable:{C_RESET} {NEON_GREEN}{C_BOLD}{human_size(reclaimable)}{C_RESET}")
+    print(
+        f"\n  {C_BOLD}{BRIGHT_WHITE}Reclaimable:{C_RESET} {NEON_GREEN}{C_BOLD}{human_size(reclaimable)}{C_RESET}"
+    )
 
     print_section_h2("2. INSTALLED CLI/TUI APPS", color=NEON_PINK)
     for a in apps_targets:
         d_sz = f"[{a['data_size_str']}]" if a.get("data_size_bytes") else ""
-        print(f"  • {BRIGHT_WHITE}{a['name'][:22]:<22}{C_RESET} {NEON_YELLOW}{d_sz:>10}{C_RESET}")
+        print(
+            f"  • {BRIGHT_WHITE}{a['name'][:22]:<22}{C_RESET} {NEON_YELLOW}{d_sz:>10}{C_RESET}"
+        )
 
     print_section_h2("3. ROGUE BOTS & DAEMONS", color=NEON_CYAN)
     if not bot_scripts:
@@ -1670,11 +2081,16 @@ def cli_audit():
 
     print_section_h2("4. PRESERVATION VAULT", color=NEON_GREEN)
     for v in vault_items:
-        lock_tag = f"{BADGE_GREEN} LOCKED {C_RESET}" if v.get("locked") else f"{BADGE_CYAN} USER {C_RESET}"
+        lock_tag = (
+            f"{BADGE_GREEN} LOCKED {C_RESET}"
+            if v.get("locked")
+            else f"{BADGE_CYAN} USER {C_RESET}"
+        )
         print(f"  {lock_tag} {BRIGHT_WHITE}{v['name'][:24]}{C_RESET}")
 
+
 def cli_clean(safe_only=True, dry_run=False, auto_yes=False):
-    cols = get_term_cols()
+    get_term_cols()
     targets = define_cleaning_targets()
     if safe_only:
         targets = [t for t in targets if t.get("rec_type") == "safe"]
@@ -1687,19 +2103,26 @@ def cli_clean(safe_only=True, dry_run=False, auto_yes=False):
     print_large_header()
     print_section_h2(f"PURGING {len(targets)} CACHE TARGETS", color=NEON_RED)
     for t in targets:
-        print(f"  • {BRIGHT_WHITE}{t['name'][:24]:<24}{C_RESET} {NEON_CYAN}{t['size_str']:>8}{C_RESET}")
+        print(
+            f"  • {BRIGHT_WHITE}{t['name'][:24]:<24}{C_RESET} {NEON_CYAN}{t['size_str']:>8}{C_RESET}"
+        )
 
     if dry_run:
-        print(f"\n{BADGE_CYAN} DRY RUN {C_RESET} {TEXT_MUTED}Would reclaim {human_size(total_bytes)}. No files touched.{C_RESET}")
+        print(
+            f"\n{BADGE_CYAN} DRY RUN {C_RESET} {TEXT_MUTED}Would reclaim {human_size(total_bytes)}. No files touched.{C_RESET}"
+        )
         return
 
     if not auto_yes:
-        print(f"\n{C_BOLD}{BRIGHT_WHITE}Purge these targets ({human_size(total_bytes)})? (y/N): {C_RESET}", end="")
+        print(
+            f"\n{C_BOLD}{BRIGHT_WHITE}Purge these targets ({human_size(total_bytes)})? (y/N): {C_RESET}",
+            end="",
+        )
         try:
             conf = input().strip().lower()
         except Exception:
             conf = "n"
-        if conf not in ('y', 'yes'):
+        if conf not in ("y", "yes"):
             print(f"{NEON_YELLOW}Operation cancelled by operator.{C_RESET}")
             return
 
@@ -1709,32 +2132,44 @@ def cli_clean(safe_only=True, dry_run=False, auto_yes=False):
             subprocess.run(t["cmd"])
         elif t["action_type"] == "empty_dir":
             for p in t["paths"]:
-                if is_protected(p): continue
+                if is_protected(p):
+                    continue
                 if os.path.exists(p):
                     for item in os.listdir(p):
                         ip = os.path.join(p, item)
-                        if is_protected(ip): continue
+                        if is_protected(ip):
+                            continue
                         try:
                             if os.path.isdir(ip) and not os.path.islink(ip):
                                 shutil.rmtree(ip, ignore_errors=True)
                             else:
                                 os.remove(ip)
-                        except Exception: pass
+                        except Exception:
+                            pass
         elif t["action_type"] == "remove_paths":
             for p in t["paths"]:
-                if is_protected(p): continue
+                if is_protected(p):
+                    continue
                 if os.path.exists(p):
                     try:
                         if os.path.isdir(p) and not os.path.islink(p):
                             shutil.rmtree(p, ignore_errors=True)
                         else:
                             os.remove(p)
-                    except Exception: pass
+                    except Exception:
+                        pass
 
     subprocess.run("pip cache purge 2>/dev/null", shell=True)
-    animate_safe("PURGED", f"Successfully reclaimed {human_size(total_bytes)} storage!", duration=0.6)
+    animate_safe(
+        "PURGED",
+        f"Successfully reclaimed {human_size(total_bytes)} storage!",
+        duration=0.6,
+    )
     used, total, free, pct = get_disk_usage()
-    print(f"\n {BG_CHARCOAL} {C_BOLD}{BRIGHT_WHITE}UPDATED STORAGE:{C_RESET} Free: {NEON_GREEN}{C_BOLD}{free}{C_RESET} ({NEON_PINK}{pct} full{C_RESET})")
+    print(
+        f"\n {BG_CHARCOAL} {C_BOLD}{BRIGHT_WHITE}UPDATED STORAGE:{C_RESET} Free: {NEON_GREEN}{C_BOLD}{free}{C_RESET} ({NEON_PINK}{pct} full{C_RESET})"
+    )
+
 
 def cli_vault(action="list", target=None, name=None):
     if action == "list":
@@ -1743,13 +2178,17 @@ def cli_vault(action="list", target=None, name=None):
         print_section_h2("PRESERVATION VAULT SHIELDS", color=NEON_GREEN)
         for v in vault_items:
             iid = v.get("id", 0)
-            lock_tag = f"{BADGE_GREEN} LOCKED {C_RESET}" if v.get("locked") else f"{BADGE_CYAN} USER {C_RESET}"
+            lock_tag = (
+                f"{BADGE_GREEN} LOCKED {C_RESET}"
+                if v.get("locked")
+                else f"{BADGE_CYAN} USER {C_RESET}"
+            )
             print(f"  [{iid}] {lock_tag} {BRIGHT_WHITE}{v['name'][:24]}{C_RESET}")
             print(f"      {TEXT_MUTED}Pattern: {v.get('pattern', '')[:32]}{C_RESET}")
     elif action in ("add", "+"):
         if not target:
             print(f"{NEON_RED}Error: Missing path or pattern to shield.{C_RESET}")
-            print(f"Usage: sentinel vault add <path_or_pattern> [optional_name]")
+            print("Usage: sentinel vault add <path_or_pattern> [optional_name]")
             return
         label = name if name else os.path.basename(target) or target
         ok, res = add_to_vault(label, target, "CLI User Shield")
@@ -1760,13 +2199,16 @@ def cli_vault(action="list", target=None, name=None):
     elif action in ("remove", "rm", "del", "-"):
         if not target or not str(target).isdigit():
             print(f"{NEON_RED}Error: Provide shield ID number to remove.{C_RESET}")
-            print(f"Usage: sentinel vault rm <id>")
+            print("Usage: sentinel vault rm <id>")
             return
         ok, res = remove_from_vault(int(target))
         if ok:
-            print(f"{NEON_GREEN}✓ Shield removed: '{res['name']}'. Restored to scans.{C_RESET}")
+            print(
+                f"{NEON_GREEN}✓ Shield removed: '{res['name']}'. Restored to scans.{C_RESET}"
+            )
         else:
             print(f"{NEON_RED}✗ Cannot remove: {res}{C_RESET}")
+
 
 def cli_apps(action="list", target=None):
     if action == "list":
@@ -1775,12 +2217,14 @@ def cli_apps(action="list", target=None):
         print_section_h2("INSTALLED APPS & TOOLS", color=NEON_PINK)
         for a in apps_targets:
             d_sz = f"[{a['data_size_str']}]" if a.get("data_size_bytes") else ""
-            print(f"  [{a['id']}] {BRIGHT_WHITE}{a['name'][:24]:<24}{C_RESET} {NEON_YELLOW}{d_sz:>10}{C_RESET}")
+            print(
+                f"  [{a['id']}] {BRIGHT_WHITE}{a['name'][:24]:<24}{C_RESET} {NEON_YELLOW}{d_sz:>10}{C_RESET}"
+            )
             print(f"      {TEXT_MUTED}Bin: {a['bin'][:33]}{C_RESET}")
     elif action in ("uninstall", "rm", "del"):
         if not target:
             print(f"{NEON_RED}Error: Provide app ID or name to uninstall.{C_RESET}")
-            print(f"Usage: sentinel apps rm <id_or_name>")
+            print("Usage: sentinel apps rm <id_or_name>")
             return
         apps = define_installed_apps()
         matched = None
@@ -1791,17 +2235,21 @@ def cli_apps(action="list", target=None):
         if not matched:
             print(f"{NEON_YELLOW}No installed app matching '{target}'.{C_RESET}")
             return
-        print(f"\n{C_BOLD}{NEON_RED}Uninstall {matched['name']}? (y/N): {C_RESET}", end="")
+        print(
+            f"\n{C_BOLD}{NEON_RED}Uninstall {matched['name']}? (y/N): {C_RESET}", end=""
+        )
         try:
             conf = input().strip().lower()
         except Exception:
             conf = "n"
-        if conf not in ('y', 'yes'):
+        if conf not in ("y", "yes"):
             print(f"{NEON_YELLOW}Uninstallation cancelled.{C_RESET}")
             return
         animate_delete(f"Removing {matched['name']}...")
         subprocess.run(matched["uninstall_cmd"], shell=True)
-        if matched.get("bin") and (os.path.exists(matched["bin"]) or os.path.islink(matched["bin"])):
+        if matched.get("bin") and (
+            os.path.exists(matched["bin"]) or os.path.islink(matched["bin"])
+        ):
             try:
                 if os.path.isdir(matched["bin"]) and not os.path.islink(matched["bin"]):
                     shutil.rmtree(matched["bin"], ignore_errors=True)
@@ -1811,12 +2259,16 @@ def cli_apps(action="list", target=None):
                 subprocess.run(f"rm -rf {matched['bin']}", shell=True)
         for eb in matched.get("extra_bins", []):
             if os.path.exists(eb) or os.path.islink(eb):
-                try: os.remove(eb)
-                except Exception: subprocess.run(f"rm -rf {eb}", shell=True)
+                try:
+                    os.remove(eb)
+                except Exception:
+                    subprocess.run(f"rm -rf {eb}", shell=True)
         for ed in matched.get("extra_dirs", []):
-            if os.path.exists(ed): shutil.rmtree(ed, ignore_errors=True)
+            if os.path.exists(ed):
+                shutil.rmtree(ed, ignore_errors=True)
         subprocess.run("hash -r 2>/dev/null", shell=True)
         print(f"{NEON_GREEN}✓ Uninstallation complete for {matched['name']}{C_RESET}")
+
 
 def cli_bots(action="scan", pid=None):
     if action == "scan":
@@ -1829,8 +2281,14 @@ def cli_bots(action="scan", pid=None):
             print(f"  {NEON_GREEN}✓ No rogue bot scripts detected.{C_RESET}")
         else:
             for b in bots:
-                status_tag = f"{NEON_RED}● ACT:{b['active_pid']}{C_RESET}" if b["active_pid"] else f"{TEXT_MUTED}💤 DORMANT{C_RESET}"
-                print(f"  • {BRIGHT_WHITE}{b['name'][:16]:<16}{C_RESET} {b['size_str']:>8} {status_tag}")
+                status_tag = (
+                    f"{NEON_RED}● ACT:{b['active_pid']}{C_RESET}"
+                    if b["active_pid"]
+                    else f"{TEXT_MUTED}💤 DORMANT{C_RESET}"
+                )
+                print(
+                    f"  • {BRIGHT_WHITE}{b['name'][:16]:<16}{C_RESET} {b['size_str']:>8} {status_tag}"
+                )
         print_divider_h3("SILENT BACKGROUND DAEMONS", color=NEON_ORANGE)
         if not daemons:
             print(f"  {NEON_GREEN}✓ No unauthorized background daemons.{C_RESET}")
@@ -1840,7 +2298,7 @@ def cli_bots(action="scan", pid=None):
     elif action in ("kill", "terminate", "stop"):
         if not pid:
             print(f"{NEON_RED}Error: Provide process PID to terminate.{C_RESET}")
-            print(f"Usage: sentinel bots kill <pid>")
+            print("Usage: sentinel bots kill <pid>")
             return
         try:
             p_int = int(pid)
@@ -1852,19 +2310,25 @@ def cli_bots(action="scan", pid=None):
         except Exception as e:
             print(f"{NEON_YELLOW}✗ Could not terminate PID {pid}: {e}{C_RESET}")
 
+
 def cli_cloud(live=False, start=False):
     if start:
-        animate_safe("STARTING", "Launching background Rclone cloud backup...", duration=0.8)
+        animate_safe(
+            "STARTING", "Launching background Rclone cloud backup...", duration=0.8
+        )
         subprocess.Popen(
             ["bash", os.path.join(HOME_DIR, "migrate_to_realme_bkp.sh")],
             stdout=open(os.path.join(HOME_DIR, "test_trace.log"), "a"),
             stderr=subprocess.STDOUT,
-            preexec_fn=os.setpgrp
+            preexec_fn=os.setpgrp,
         )
-        print(f"{NEON_GREEN}✓ Cloud migration running in background with wake-lock.{C_RESET}")
+        print(
+            f"{NEON_GREEN}✓ Cloud migration running in background with wake-lock.{C_RESET}"
+        )
         print(f"View progress: {NEON_CYAN}sentinel cloud{C_RESET}")
     else:
         show_rclone_status()
+
 
 def cli_update():
     animate_safe("UPDATING", "Running package & dependency upgrades...", duration=0.8)
@@ -1874,11 +2338,18 @@ def cli_update():
         subprocess.run(t["cmd"], shell=True)
     animate_safe("COMPLETED", "All system & dependency updates finished!", duration=0.6)
 
+
 def cli_help():
     cols = get_term_cols()
     print_large_header()
     print(f"{NEON_CYAN}╔═ TERMUX SENTINEL CLI MANUAL ═════════════╗{C_RESET}")
-    print(make_box_row(f"{BRIGHT_WHITE}Global: sentinel [subcommand] [flags]{C_RESET}", border_color=NEON_CYAN, cols=cols))
+    print(
+        make_box_row(
+            f"{BRIGHT_WHITE}Global: sentinel [subcommand] [flags]{C_RESET}",
+            border_color=NEON_CYAN,
+            cols=cols,
+        )
+    )
     print(f"{NEON_CYAN}╚══════════════════════════════════════════╝{C_RESET}")
     print(f"\n{C_BOLD}{BRIGHT_WHITE}COMMANDS:{C_RESET}")
 
@@ -1900,13 +2371,16 @@ def cli_help():
         ("sentinel update", "Upgrade All Packages"),
         ("sentinel cloud", "View Live Cloud Sync"),
         ("sentinel cloud -s", "Start Background Sync"),
-        ("sentinel help", "CLI Command Manual")
+        ("sentinel help", "CLI Command Manual"),
     ]
 
     for cmd, desc in cmds:
         c_trunc = cmd[:20]
         d_trunc = desc[:21]
-        print(f"  {NEON_YELLOW}{c_trunc:<20}{C_RESET} {BRIGHT_WHITE}{d_trunc:<21}{C_RESET}")
+        print(
+            f"  {NEON_YELLOW}{c_trunc:<20}{C_RESET} {BRIGHT_WHITE}{d_trunc:<21}{C_RESET}"
+        )
+
 
 # ==============================================================================
 # CLI ENTRYPOINT ROUTER
@@ -1960,7 +2434,10 @@ def cli_entrypoint():
         cli_help()
     else:
         print(f"\n{NEON_RED}Unknown command: '{cmd}'{C_RESET}")
-        print(f"Run {NEON_CYAN}'sentinel help'{C_RESET} to view all available commands.\n")
+        print(
+            f"Run {NEON_CYAN}'sentinel help'{C_RESET} to view all available commands.\n"
+        )
+
 
 if __name__ == "__main__":
     cli_entrypoint()
