@@ -1,0 +1,48 @@
+# =============================================================================
+# Codacy Security Scan Workflow for Termux-Sentinel
+# Analyzes Python and Shell scripts for vulnerabilities and code quality issues
+# =============================================================================
+
+name: Codacy Security Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '30 1 * * 2'
+
+permissions:
+  contents: read
+
+jobs:
+  codacy-security-scan:
+    name: Codacy Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read           # For actions/checkout to fetch code
+      security-events: write   # For github/codeql-action/upload-sarif to upload SARIF results
+      actions: read            # Required to get the Action run status
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Codacy Analysis CLI
+        uses: codacy/codacy-analysis-cli-action@v4
+        with:
+          # Optional project token: uses secret if configured, or runs client-side tools if absent
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          verbose: true
+          output: results.sarif
+          format: sarif
+          # Adjust severity for GitHub Code Scanning compatibility
+          gh-code-scanning-compat: true
+          # Force 0 exit code so SARIF upload always executes and reports to GitHub Security
+          max-allowed-issues: 2147483647
+
+      - name: Upload SARIF results file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
