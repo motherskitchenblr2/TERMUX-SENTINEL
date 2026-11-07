@@ -1,0 +1,51 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Every Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-python-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Update Python dependencies
+        uses: lfreleng-actions/python-dependencies-update-action@main
+        with:
+          # Adjust if you use pyproject.toml / uv.lock
+          requirements_file: requirements.txt
+          create_pr: true
+          pr_title: "chore(deps): automated dependency update"
+          pr_body: "Dependencies were updated automatically by the scheduled workflow."
+          branch: deps/weekly-update
+          commit_message: "chore(deps): update Python packages"
+
+      - name: Update GitHub Actions versions
+        uses: actions/checkout@v4
+      - run: |
+          curl -sSL https://github.com/actions-updater/actions-updater/releases/latest/download/actions-updater-linux-amd64 -o /usr/local/bin/actions-updater
+          chmod +x /usr/local/bin/actions-updater
+          actions-updater
+        continue-on-error: true
+
+      - name: Create PR for Actions updates
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(actions): update GitHub Actions versions"
+          branch: deps/update-actions
+          title: "chore(actions): update GitHub Actions"
+          body: "Automated update of GitHub Actions versions."
+          labels: dependencies, actions
