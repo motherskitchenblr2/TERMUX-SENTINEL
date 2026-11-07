@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+
 import Termux_Sentinel
 
 
@@ -18,7 +19,7 @@ def test_vault_structure_and_validity():
     vault_path = Path("vault.json")
     assert vault_path.exists(), "vault.json must be present in the repository root"
 
-    with open(vault_path, "r", encoding="utf-8") as f:
+    with open(vault_path, encoding="utf-8") as f:
         data = json.load(f)
 
     # In Termux-Sentinel, vault.json stores a list of shield definitions
