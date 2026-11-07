@@ -1,0 +1,68 @@
+name: Lint & Format
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install tools
+        run: pip install ruff black isort autoflake pyupgrade
+
+      - name: Ruff (check + fix)
+        run: ruff check --fix . || true
+
+      - name: Black
+        run: black . || true
+
+      - name: isort
+        run: isort . || true
+
+      - name: autoflake
+        run: autoflake --in-place --remove-all-unused-imports --remove-unused-variables -r . || true
+
+      - name: pyupgrade
+        run: pyupgrade --py310-plus $(find . -name '*.py') || true
+
+      - name: Commit fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-fix Python syntax & formatting"
+          branch: ${{ github.head_ref }}
+
+  shell-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: ShellCheck + shfmt
+        uses: luizm/action-sh-checker@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          sh_checker_comment: false
+          sh_checker_only_diff: false
+
+      - name: Commit shfmt fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format shell scripts"
+          branch: ${{ github.head_ref }}
