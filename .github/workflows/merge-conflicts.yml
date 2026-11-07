@@ -1,0 +1,73 @@
+name: Auto-Resolve Merge Conflicts
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-merge-main:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.base.ref == 'main'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Fetch main
+        run: |
+          git remote add upstream https://github.com/${{ github.repository }}.git
+          git fetch upstream main
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          set +e
+          git merge --no-commit --no-ff upstream/main
+          echo "MERGE_EXIT_CODE=$?" >> $GITHUB_ENV
+
+      - name: Detect conflict type
+        id: conflict-check
+        if: env.MERGE_EXIT_CODE != 0
+        run: |
+          conflicted_files=$(git diff --name-only --diff-filter=U)
+          echo "Conflicted files: $conflicted_files"
+          false_conflict=true
+          for file in $conflicted_files; do
+            base_content=$(git show upstream/main:$file 2>/dev/null || echo "")
+            pr_content=$(cat "$file" 2>/dev/null || echo "")
+            if [[ "$base_content" != "$pr_content" ]]; then
+              echo "True conflict in $file"
+              false_conflict=false
+            fi
+          done
+          if [ "$false_conflict" = true ]; then
+            echo "status=false_conflict" >> $GITHUB_OUTPUT
+          else
+            echo "status=true_conflict" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Abort merge (true conflict)
+        if: steps.conflict-check.outputs.status == 'true_conflict'
+        run: |
+          git merge --abort
+          echo "True conflict detected. Please resolve manually."
+          exit 1
+
+      - name: Auto-resolve false conflict
+        if: steps.conflict-check.outputs.status == 'false_conflict'
+        run: |
+          git merge --abort
+          git merge -X ours upstream/main
+          git commit --no-edit || true
+          git push
