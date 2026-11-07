@@ -47,51 +47,49 @@ jobs:
         if: always()
         run: |
           if [ -f results.sarif ]; then
+            sudo chmod 666 results.sarif
             python3 -c "
             import json, os
 
-            try:
-                with open('results.sarif', 'r', encoding='utf-8') as f:
-                    content = f.read()
+            with open('results.sarif', 'r', encoding='utf-8') as f:
+                content = f.read()
 
-                # Encode spaces in URIs to ensure RFC 3986 compliance
-                content = content.replace('\"Python Script/', '\"Python%20Script/')
-                data = json.loads(content)
+            # Encode spaces in URIs to ensure RFC 3986 compliance
+            content = content.replace('\"Python Script/', '\"Python%20Script/')
+            data = json.loads(content)
 
-                runs = data.get('runs', [])
-                if len(runs) > 1:
-                    all_rules = []
-                    all_results = []
-                    all_artifacts = []
-                    seen_rule_ids = set()
+            runs = data.get('runs', [])
+            if len(runs) > 1:
+                all_rules = []
+                all_results = []
+                all_artifacts = []
+                seen_rule_ids = set()
 
-                    for r in runs:
-                        driver = r.get('tool', {}).get('driver', {})
-                        for rule in driver.get('rules', []):
-                            rid = rule.get('id')
-                            if rid and rid not in seen_rule_ids:
-                                seen_rule_ids.add(rid)
-                                all_rules.append(rule)
-                        all_results.extend(r.get('results', []))
-                        all_artifacts.extend(r.get('artifacts', []))
+                for r in runs:
+                    driver = r.get('tool', {}).get('driver', {})
+                    for rule in driver.get('rules', []):
+                        rid = rule.get('id')
+                        if rid and rid not in seen_rule_ids:
+                            seen_rule_ids.add(rid)
+                            all_rules.append(rule)
+                    all_results.extend(r.get('results', []))
+                    all_artifacts.extend(r.get('artifacts', []))
 
-                    merged_run = {
-                        'tool': {
-                            'driver': {
-                                'name': 'Codacy Security Analysis',
-                                'rules': all_rules
-                            }
-                        },
-                        'results': all_results,
-                        'artifacts': all_artifacts
-                    }
-                    data['runs'] = [merged_run]
+                merged_run = {
+                    'tool': {
+                        'driver': {
+                            'name': 'Codacy Security Analysis',
+                            'rules': all_rules
+                        }
+                    },
+                    'results': all_results,
+                    'artifacts': all_artifacts
+                }
+                data['runs'] = [merged_run]
 
-                    with open('results.sarif', 'w', encoding='utf-8') as f:
-                        json.dump(data, f)
-                    print(f'Successfully consolidated {len(runs)} SARIF runs into 1 single run with {len(all_results)} findings.')
-            except Exception as e:
-                print(f'SARIF normalization notice: {e}')
+                with open('results.sarif', 'w', encoding='utf-8') as f:
+                    json.dump(data, f)
+                print(f'Successfully consolidated {len(runs)} SARIF runs into 1 single run with {len(all_results)} findings.')
             "
           fi
 
